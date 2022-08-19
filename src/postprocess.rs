@@ -106,10 +106,6 @@ impl PostProcess {
     ///   * 源纹理内容
     /// * `dst`
     ///   * 接收处理结果的纹理尺寸
-    /// * `blend`
-    ///   * 渲染到目标时的混合方式
-    /// * `matrix`
-    ///   * 渲染到目标时的网格变换
     /// * `return`
     ///   * Ok(EPostprocessTarget) 执行成功
     ///     * 返回 渲染结果纹理
