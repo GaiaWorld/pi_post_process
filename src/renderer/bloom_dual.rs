@@ -1,6 +1,6 @@
 use pi_assets::{mgr::AssetMgr, asset::GarbageEmpty};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::SafeAtlasAllocator};
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual}, postprocess_pipeline::PostProcessPipeline };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline };
 
 use super::{blur_dual::{blur_dual_render, BlurDualRenderer, calc_blur_dual_render, blur_dual_render_2}, filter_brightness::{filter_brightness_render, FilterBrightnessRenderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}, renderer::Renderer};
 
@@ -62,14 +62,14 @@ pub fn bloom_dual_render(
     if let Ok(_) = blur_dual_result {
         let mut copyparam = CopyIntensity::default();
         copy_intensity_render(
-            &copyparam, 
+            &copyparam, &Alpha::default(),
             renderdevice, queue, encoder, postprocess_pipelines, &renderer.copy, image_effect_geo, resource, receiver, blend, matrix
         );
     
         copyparam.intensity = bloom_dual.intensity;
     
         copy_intensity_render(
-            &copyparam, 
+            &copyparam, &Alpha::default(),
             renderdevice, queue, encoder, postprocess_pipelines, &renderer.copy_2, image_effect_geo, to, receiver, EBlend::Add, matrix
         );
         temp_targets.release(filter_rt_id);

@@ -3,7 +3,7 @@ use std::{num::NonZeroU32, time::SystemTime, sync::Arc};
 
 use image::{GenericImageView};
 use pi_assets::{mgr::AssetMgr, asset::GarbageEmpty};
-use pi_postprocess::{postprocess::{PostProcess}, effect::{color_balance::ColorBalance, hsb::HSB, blur_dual::BlurDual, copy::CopyIntensity, blur_direct::BlurDirect, radial_wave::RadialWave, blur_radial::BlurRadial, vignette::Vignette, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, blur_bokeh::BlurBokeh, horizon_glitch::HorizonGlitch}, material::{target_format::ETexutureFormat, blend::EBlend}, postprocess_geometry::PostProcessGeometryManager, postprocess_pipeline::PostProcessPipeline, geometry::IDENTITY_MATRIX, temprory_render_target::{EPostprocessTarget, PostprocessTexture}};
+use pi_postprocess::{postprocess::{PostProcess}, effect::{color_balance::ColorBalance, hsb::HSB, blur_dual::BlurDual, copy::CopyIntensity, blur_direct::BlurDirect, radial_wave::RadialWave, blur_radial::BlurRadial, vignette::Vignette, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, blur_bokeh::BlurBokeh, horizon_glitch::HorizonGlitch, alpha::Alpha}, material::{target_format::ETexutureFormat, blend::EBlend}, postprocess_geometry::PostProcessGeometryManager, postprocess_pipeline::PostProcessPipeline, geometry::IDENTITY_MATRIX, temprory_render_target::{EPostprocessTarget, PostprocessTexture}};
 use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}, rhi::{device::RenderDevice, asset::{RenderRes, }, }};
 use winit::{window::Window, event::WindowEvent};
 
@@ -169,25 +169,26 @@ impl State {
         self.value_test = r;
         // self.postprocess.color_balance = Some(ColorBalance { r: r, g: 255 - r, b: 255 });
         // self.postprocess.color_filter = Some(ColorFilter { r: r, g: 0, b: 0 });
-        self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
+        // self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
         // self.postprocess.hsb = Some(HSB { hue: self.value_test as i16, brightness: 1, saturate: 1 });
         // self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 4, intensity: 1.0f32, simplified_up: false });
         // self.postprocess.blur_direct = Some(BlurDirect { radius: 4, iteration: 10, direct_x: r as f32 / 255.0 * 2.0 - 1.0, direct_y: 1.0 });
         // self.postprocess.blur_radial = Some(BlurRadial { radius: 2, iteration: 10, center_x: 0., center_y: 0., start: 0.5, fade: 0.2  });
         // self.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 10, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
 
-        if self.postprocess.horizon_glitch.is_none() {
-            let hg = HorizonGlitch::default();
-            self.postprocess.horizon_glitch = Some(hg);
-        }
+        // if self.postprocess.horizon_glitch.is_none() {
+        //     let hg = HorizonGlitch::default();
+        //     self.postprocess.horizon_glitch = Some(hg);
+        // }
         
-        self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
+        // self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-        self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+        // self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
         
         // self.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
         // self.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
+        self.postprocess.alpha = Some(Alpha { a: r as f32 / 255.0 });
     }
 
     pub fn render(
@@ -243,7 +244,7 @@ impl State {
         let receive_width = self.size.width;
         let receive_height = self.size.height;
 
-        let blend = EBlend::None;
+        let blend = EBlend::Combine;
 
         let dst = PostprocessTexture {
             use_x: self.value_test as u32,

@@ -1,8 +1,8 @@
-use crate::{effect::{copy::CopyIntensity}, geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, get_texture_binding_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{effect::{copy::CopyIntensity, alpha::Alpha}, geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, get_texture_binding_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::Renderer};
 
-const UNIFORM_PARAM_SIZE: u64 = 8 * 4;
+const UNIFORM_PARAM_SIZE: u64 = 9 * 4;
 
 pub struct CopyIntensityRenderer {
     pub copy: Renderer,
@@ -78,6 +78,7 @@ pub fn update_uniform(
     renderer: &Renderer,
     queue: &wgpu::Queue,
     copyparam: &CopyIntensity,
+    alpha: &Alpha,
 ) {
     // println!("{}, {}, ", copyparam.intensity, copyparam.polygon);
     queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_param, bytemuck::cast_slice(&[
@@ -88,12 +89,14 @@ pub fn update_uniform(
         copyparam.bg_color.0 as f32 / 255.0,
         copyparam.bg_color.1 as f32 / 255.0,
         copyparam.bg_color.2 as f32 / 255.0,
-        copyparam.bg_color.3 as f32 / 255.0
+        copyparam.bg_color.3 as f32 / 255.0,
+        alpha.a as f32,
     ]));
 }
 
 pub fn copy_intensity_render(
     copyparam: &CopyIntensity,
+    alpha: &Alpha,
     device: &wgpu::Device,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
@@ -116,7 +119,7 @@ pub fn copy_intensity_render(
     );
 
     queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
-    update_uniform(renderer, &queue, copyparam);
+    update_uniform(renderer, &queue, copyparam, alpha);
     effect_render(
         device,
         queue,

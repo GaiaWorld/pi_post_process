@@ -1,4 +1,5 @@
 
+pub mod alpha;
 pub mod area_mask;
 pub mod blur_bokeh;
 pub mod color_balance;

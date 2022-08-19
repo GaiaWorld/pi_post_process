@@ -1,6 +1,6 @@
 
 use pi_render::{rhi::{device::RenderDevice,}, };
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, GlitchInstanceViewer, EGeometryBuffer}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, GlitchInstanceViewer, EGeometryBuffer}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::{Renderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}};
 
@@ -99,7 +99,7 @@ pub fn horizon_glitch_render(
     let device = &renderdevice.wgpu_device();
 
     copy_intensity_render(
-        &copyparam, 
+        &copyparam, &Alpha::default(),
         device, queue, encoder, postprocess_pipelines, renderer_copy, image_effect_geo, resource, receiver, blend, matrix
     );
 

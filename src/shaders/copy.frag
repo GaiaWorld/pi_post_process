@@ -8,7 +8,11 @@ layout(set = 0, binding = 1) uniform Param {
     float polygonN;
     float radius;
     float rotate;
-    vec4 bgColor;
+    float bgColorR;
+    float bgColorG;
+    float bgColorB;
+    float bgColorA;
+    float alpha;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {
@@ -53,7 +57,7 @@ vec4 polygon(texture2D tex, sampler sp, vec2 uv, vec2 st, float scaling, float r
 
 void main() {
     vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
-
+    vec4 bgColor = vec4(bgColorR, bgColorG, bgColorB, bgColorA);
     vec4 c = mix(
         texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV),
         mix(
@@ -65,6 +69,8 @@ void main() {
     );
 
     c.rgb *= intensity;
+
+    c.a *= alpha;
 
     gl_FragColor = c;
 }
