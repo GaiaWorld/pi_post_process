@@ -1,0 +1,42 @@
+[package]
+name = "pi_postprocess"
+version = "0.1.0"
+authors = ["suncy <suncy@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+pollster = "0.2"
+image = "0.24.2"
+rand = "0.8"
+guillotiere = {version="0.6"}
+num-traits = "0.2.6"
+lazy_static = "*"
+derive_deref = "1.1"
+nalgebra = {version = "0.24.0", features = ["serde", "serde-serialize"]}
+log="*"
+smallvec={version = "1.8", features = ["serde"]}
+pi_hash="0.1"
+pi_enum_default_macro="0.1"
+pi_res="0.1"
+futures = "0.3"
+fixedbitset = {version="0.4", features = ["serde"]}
+wgpu = { version = "0.12", features = ["spirv", "glsl"] }
+bytemuck = { version = "1.4", features = ["derive"] }
+naga = { version = "0.8", features = [
+    "glsl-in",
+    "spv-in",
+    "spv-out",
+    "wgsl-in",
+    "wgsl-out",
+] }
+pi_assets = "0.7"
+pi_render = { git = "https://github.com/GaiaWorld/pi_render.git" }
+
+pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
+
+[dev-dependencies]
+winit = "0.26"
+wgpu = "0.12"
+env_logger = "0.9"
+float-ord = "0.3"
+async-trait="0.1"

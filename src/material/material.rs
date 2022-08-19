@@ -1,0 +1,25 @@
+use super::{texture_block::TextureBlock, flag_block::FlagBlock, color_block::ColorBlock, float4_block::Float4Block, float2_block::Float2Block, float_block::FloatBlock, int_block::IntBlock};
+
+pub struct Material {
+    pub textures: Vec<TextureBlock>,
+    pub texture_slots: Vec<u8>,
+    pub texture_slots_used: Vec<u8>,
+    pub ints: Vec<IntBlock>,
+    pub int_slots: Vec<u8>,
+    pub int_slots_used: Vec<u8>,
+    pub floats: Vec<FloatBlock>,
+    pub float_slots: Vec<u8>,
+    pub float_slots_used: Vec<u8>,
+    pub float2s: Vec<Float2Block>,
+    pub float2_slots: Vec<u8>,
+    pub float2_slots_used: Vec<u8>,
+    pub float4s: Vec<Float4Block>,
+    pub float4_slots: Vec<u8>,
+    pub float4_slots_used: Vec<u8>,
+    pub colors: Vec<ColorBlock>,
+    pub color_slots: Vec<u8>,
+    pub color_slots_used: Vec<u8>,
+    pub flags: Vec<FlagBlock>,
+    pub flag_slots: Vec<u8>,
+    pub flag_slots_used: Vec<u8>,
+}
