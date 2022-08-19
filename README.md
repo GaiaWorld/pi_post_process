@@ -58,3 +58,8 @@
 * 创建 PostProcessRenderer 渲染管理
   * 全局唯一
 * 调用接口 PostProcess.draw()
+
+## 网格说明
+
+* 渲染范围对应网格顶点坐标范围为
+  * [-0.5, 0.5]
