@@ -1,7 +1,7 @@
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::filter_brightness::FilterBrightness, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{ EPostprocessTarget, TemporaryRenderTargets} };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::filter_brightness::FilterBrightness, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{ EPostprocessTarget, TemporaryRenderTargets} };
 
-use super::{renderer::Renderer};
+use super::{renderer::{Renderer, ERenderParam}};
 
 
 const UNIFORM_PARAM_SIZE: u64 = 4 * 4;
@@ -97,23 +97,21 @@ pub fn update_uniform(
 }
 
 /// 提取满足辉光亮度的像素
-pub fn filter_brightness_render(
-    filter_brightness: &FilterBrightness,
-    device: &wgpu::Device,
-    queue: & wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
-    renderer: &FilterBrightnessRenderer,
-    image_effect_geo: &Geometry,
-    resource:  (u32, u32, usize, ETexutureFormat),
-    receiver:  (u32, u32, usize, ETexutureFormat),
+pub fn filter_brightness_render<'a>(
+    filter_brightness: & FilterBrightness,
+    device: & wgpu::Device,
+    queue: &  wgpu::Queue,
+    renderpass: & mut wgpu::RenderPass<'a>, 
+    format: ETexutureFormat,
+    postprocess_pipelines: &'a PostProcessPipeline,
+    renderer: &'a FilterBrightnessRenderer,
+    texture_bind_group: &'a wgpu::BindGroup,
+    image_effect_geo: &'a Geometry,
+    resource:  & EPostprocessTarget,
     blend: EBlend,
-    matrix: &[f32; 16],
-    temp_targets: &mut TemporaryRenderTargets,
+    matrix: & [f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
-    let resource = temp_targets.get_target(resource.2).unwrap();
-    let receiver = temp_targets.get_target(receiver.2).unwrap();
-
     let renderer = &renderer.filter;
 
     // let image_effect_geo = postprocess_renderer.get_geometry(device);
@@ -121,18 +119,18 @@ pub fn filter_brightness_render(
         EPostprocessShader::FilterBrightness,
         EVertexBufferLayout::Position2D,
         blend,
-        receiver.format(),
+        format,
     );
-
-    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     update_uniform(renderer, &queue, filter_brightness);
     effect_render(
         device,
         queue,
-        encoder,
+        renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,

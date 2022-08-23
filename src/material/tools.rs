@@ -3,8 +3,24 @@ use crate::{geometry::{Geometry, EGeometryBuffer}, temprory_render_target::EPost
 
 use super::{shader::Shader, pipeline::UniformBufferInfo};
 
-pub const VERTEX_MATERIX_SIZE: u64 = 16 * 4;
+pub const SIMPLE_RENDER_EXTEND_FLOAT_COUNT: u16 = 2;
+pub const VERTEX_MATERIX_SIZE: u64 = (16 + (SIMPLE_RENDER_EXTEND_FLOAT_COUNT / 4 + 1) * 4) as u64 * 4;
 pub const DIFFUSE_MATERIX_SIZE: u64 = 4 * 4;
+
+#[derive(Debug, Clone, Copy)]
+pub struct SimpleRenderExtendsData {
+    pub alpha: f32,
+    pub depth: f32,
+}
+
+impl SimpleRenderExtendsData {
+    pub fn default() -> Self {
+        Self {
+            alpha: 1.0,
+            depth: 1.0,
+        }
+    }
+}
 
 pub fn get_texture_binding_group(
     texture_bind_group_layout: &wgpu::BindGroupLayout,
@@ -42,22 +58,20 @@ pub fn get_texture_binding_group(
     )
 }
 
-pub fn effect_render(
+pub fn effect_render<'a>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    image_effect_geo: &Geometry,
+    renderpass: &mut wgpu::RenderPass<'a>,
+    image_effect_geo: &'a Geometry,
     resource: &EPostprocessTarget,
-    receiver: &EPostprocessTarget,
-    texture_bind_group_layout: &wgpu::BindGroupLayout,
-    texture_uniform_buffer: &wgpu::Buffer,
+    texture_bind_group: &'a wgpu::BindGroup,
+    texture_bind_group_layout: &'a wgpu::BindGroupLayout,
+    texture_uniform_buffer: &'a wgpu::Buffer,
     texture_uniform_offset: u64,
-    uniform_bind_group: &wgpu::BindGroup,
-    pipeline: &wgpu::RenderPipeline,
+    uniform_bind_group: &'a wgpu::BindGroup,
+    pipeline: &'a wgpu::RenderPipeline,
     label: Option<&str>,
-)  {
-
-    let texture_bind_group = get_texture_binding_group(texture_bind_group_layout, device, resource.view());
+) {
 
     let us = resource.use_w() as f32 / resource.width () as f32;
     let vs = resource.use_h() as f32 / resource.height() as f32;
@@ -66,32 +80,6 @@ pub fn effect_render(
     // println!("{:?}", (x, y, w, h));
     queue.write_buffer(texture_uniform_buffer, texture_uniform_offset, bytemuck::cast_slice(&[us, vs, uo, vo]));
 
-    let mut renderpass = encoder.begin_render_pass(
-        &wgpu::RenderPassDescriptor {
-            label: label,
-            color_attachments: &[
-                wgpu::RenderPassColorAttachment {
-                    view: receiver.view(),
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: true,
-                    }
-                }
-            ],
-            depth_stencil_attachment: None,
-        }
-    );
-
-    // println!("{:?}", to_width);
-    renderpass.set_viewport(
-        receiver.use_x() as f32,
-        receiver.use_y() as f32,
-        receiver.use_w() as f32,
-        receiver.use_h() as f32,
-        0.,
-        1.
-    );
     // renderpass.set_scissor_rect(
     //     x,
     //     y,
@@ -102,7 +90,7 @@ pub fn effect_render(
     renderpass.set_pipeline(pipeline);
 
     renderpass.set_bind_group(0, uniform_bind_group, &[]);
-    renderpass.set_bind_group(1, &texture_bind_group, &[]);
+    renderpass.set_bind_group(1, texture_bind_group, &[]);
 
     renderpass.set_vertex_buffer(
         0, 

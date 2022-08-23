@@ -3,6 +3,7 @@
 #define SHADER_NAME fragment:FilterBrightness
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
@@ -35,4 +36,5 @@ void main() {
     c.rgb = ApplyBrightnessThreshold(c.rgb, threshold);
 
     gl_FragColor = c;
+    gl_FragColor.a *= vAlpha;
 }

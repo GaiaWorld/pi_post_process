@@ -1,6 +1,7 @@
 #version 450
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 layout(location = 0) out vec4 gl_FragColor;
 
 layout(set = 0, binding = 1) uniform Param {
@@ -12,7 +13,6 @@ layout(set = 0, binding = 1) uniform Param {
     float bgColorG;
     float bgColorB;
     float bgColorA;
-    float alpha;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {
@@ -70,7 +70,7 @@ void main() {
 
     c.rgb *= intensity;
 
-    c.a *= alpha;
+    c.a *= vAlpha;
 
     gl_FragColor = c;
 }

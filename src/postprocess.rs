@@ -7,14 +7,14 @@ use crate::{effect::{
     hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, area_mask::AreaMask,
     blur_dual::BlurDual, blur_radial::BlurRadial, blur_bokeh::BlurBokeh, blur_direct::BlurDirect,
     vignette::Vignette, copy::CopyIntensity, radial_wave::RadialWave, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, horizon_glitch::HorizonGlitch, alpha::Alpha},
-    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::color_effect_render, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render}, postprocess_geometry::PostProcessGeometryManager, material::{target_format::{ETexutureFormat, get_target_texture_format}, blend::EBlend, shader::EPostprocessShader}, geometry::{vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, postprocess_flags::PostprocessFlags, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessPipeline
+    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets, EPostprocessResult, PostprocessShareTarget}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::color_effect_render, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render, renderer::ERenderParam}, postprocess_geometry::PostProcessGeometryManager, material::{target_format::{ETexutureFormat, get_target_texture_format, as_target_texture_format}, blend::EBlend, shader::EPostprocessShader, tools::{get_texture_binding_group, SimpleRenderExtendsData}}, geometry::{vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, postprocess_flags::PostprocessFlags, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessPipeline
 };
 
 pub struct PostProcess {
     // pub area_mask:          Option<AreaMask>,
     
-    pub copy:               Option<CopyIntensity>,
     pub alpha:              Option<Alpha>,
+    pub copy:               Option<CopyIntensity>,
     pub hsb:                Option<HSB>,
     pub color_balance:      Option<ColorBalance>,
     pub color_scale:        Option<ColorScale>,
@@ -86,8 +86,6 @@ impl PostProcess {
     ///   * 最终结果纹理的格式
     /// * `blend`
     ///   * 渲染到目标时的混合方式
-    /// * `force_final_copy`
-    ///   * 是否强制增加 拷贝过程(普通拷贝)
     pub fn calc(
         &mut self,
         delta_time: u64,
@@ -97,14 +95,13 @@ impl PostProcess {
         src_format: ETexutureFormat,
         dst_format: ETexutureFormat,
         blend: EBlend,
-        force_final_copy: bool,
     ) {
-        self.check(render_device, delta_time, geometrys, postprocess_pipelines, src_format, dst_format, blend, force_final_copy);
+        self.check(render_device, delta_time, geometrys, postprocess_pipelines, src_format, dst_format, blend, true);
     }
     /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
     /// * `src`
     ///   * 源纹理内容
-    /// * `dst`
+    /// * `dst_size`
     ///   * 接收处理结果的纹理尺寸
     /// * `return`
     ///   * Ok(EPostprocessTarget) 执行成功
@@ -112,44 +109,7 @@ impl PostProcess {
     ///     * 当实际没有渲染 结果时 会返回 传入的src 对应数据
     ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
     ///   * Err(String)
-    pub fn draw_front<'a, 'b>(
-        &self,
-        device: &RenderDevice,
-        queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
-        atlas_allocator: &'a SafeAtlasAllocator,
-        postprocess_pipelines: &PostProcessPipeline,
-        geometrys: &PostProcessGeometryManager,
-        src: EPostprocessTarget<'a>,
-        dst: (u32, u32),
-    ) -> Result<EPostprocessTarget<'a>, String> {
-        let mut temp_targets: TemporaryRenderTargets = TemporaryRenderTargets::new(atlas_allocator);
-
-        let blend: EBlend = EBlend::None;
-        let matrix: &[f32; 16] = &IDENTITY_MATRIX;
-
-        let result = self._draw_front(
-            device, queue, encoder, postprocess_pipelines, geometrys, src, dst, blend, matrix, &mut temp_targets
-        );
-
-        result
-    }
-    /// 对源内容进行最后一个效果的处理
-    /// * `src`
-    ///   * 源纹理内容
-    /// * `dst`
-    ///   * 接收处理结果的纹理
-    /// * `blend`
-    ///   * 渲染到目标时的混合方式
-    /// * `matrix`
-    ///   * 渲染到目标时的网格变换
-    /// * `return`
-    ///   * Ok(EPostprocessTarget) 执行成功
-    ///     * 返回 渲染结果纹理
-    ///     * 当实际没有渲染 结果时 会返回 传入的src 对应数据
-    ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
-    ///   * Err(String)
-    pub fn draw_final<'a>(
+    pub fn draw_front(
         &self,
         device: &RenderDevice,
         queue: &wgpu::Queue,
@@ -157,60 +117,164 @@ impl PostProcess {
         atlas_allocator: &SafeAtlasAllocator,
         postprocess_pipelines: &PostProcessPipeline,
         geometrys: &PostProcessGeometryManager,
-        src: EPostprocessTarget<'a>,
-        dst: EPostprocessTarget<'a>,
-        blend: EBlend,
-        matrix: &[f32; 16],
-    ) -> Result<EPostprocessTarget<'a>, String> {
-        let mut temp_targets: TemporaryRenderTargets = TemporaryRenderTargets::new(atlas_allocator);
-        let mut resource = (src.use_w(), src.use_h(), 0, src.format());
-        let mut receiver = (dst.use_w(), dst.use_h(), 0, dst.format());
-        resource.2 = temp_targets.record_from_other(src.clone());
-        receiver.2 = temp_targets.record_from_other(dst.clone());
-        let result = self._draw_final(
-            device, queue, encoder, postprocess_pipelines, geometrys, resource, receiver, blend, matrix, &mut temp_targets
+        src: &EPostprocessTarget,
+        dst_size: (u32, u32),
+    ) -> Result<Option<EPostprocessTarget>, String> {
+
+        let blend: EBlend = EBlend::None;
+        let matrix: &[f32; 16] = &IDENTITY_MATRIX;
+
+        let result = self._draw_front(
+            device, queue, atlas_allocator, encoder, postprocess_pipelines, geometrys, src, dst_size, blend, matrix, 
         );
-
-        let result = match result {
-            Ok(result) => match result {
-                true => {
-                    Ok(dst)
-                },
-                false => {
-                    Ok(src)
-                },
-            },
-            Err(e) => Err(e),
-        };
-
-        temp_targets.reset();
 
         result
     }
+    /// 获取 draw_final 需要的 texture_bind_group 
+    /// * 获取失败, 则不能调用 draw_final
+    pub fn get_final_texture_bind_group<'a>(
+        &'a self,
+        device: &'a RenderDevice,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        src: &'a EPostprocessTarget,
+        target_format: wgpu::TextureFormat,
+        blend: EBlend,
+    ) -> Option<wgpu::BindGroup> {
+        match as_target_texture_format(target_format) {
+            Ok(target_format) => {
+                match self.flags.last() {
+                    Some(flag) => {
+                        self.get_texture_bind_group(device, target_format, postprocess_pipelines, src, blend, *flag)
+                    },
+                    None => None,
+                }
+            },
+            Err(_) => None,
+        }
+    }
+    fn get_texture_bind_group<'a>(
+        &'a self,
+        device: &'a RenderDevice,
+        target_format: ETexutureFormat,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        src: &'a EPostprocessTarget,
+        blend: EBlend,
+        flag: EPostprocessRenderType,
+    ) -> Option<wgpu::BindGroup> {
+        let pipeline = match flag {
+            EPostprocessRenderType::ColorEffect => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::ColorEffect, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::BlurDirect => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::BlurDirect, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::BlurRadial => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::BlurRadial, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::BlurBokeh => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::BlurBokeh, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::RadialWave => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::RadialWave, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::HorizonGlitch => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::HorizonGlitch, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::FilterSobel => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::Sobel, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::CopyIntensity => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::CopyIntensity, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            EPostprocessRenderType::FinalCopyIntensity => {
+                Some(postprocess_pipelines.get_pipeline( EPostprocessShader::CopyIntensity, EVertexBufferLayout::Position2D, blend, target_format))
+            },
+            _ => {
+                None
+            }
+        };
+        match pipeline {
+            Some(pipeline) => Some(get_texture_binding_group(&pipeline.texture_bind_group_layout, device, src.view())),
+            None => None,
+        }
+    }
+    /// 对源内容进行最后一个效果的处理
+    /// * 调用前必须的操作:
+    ///   * 通过 get_final_texture_bind_group 获取 texture_bind_group
+    ///   * 创建 renderpass
+    /// * `src`
+    ///   * 源纹理内容
+    /// * `dst`
+    ///   * 外部的RenderPass 及 目标Format
+    /// * `blend`
+    ///   * 渲染到目标时的混合方式
+    /// * `matrix`
+    ///   * 渲染到目标时的网格变换
+    /// * `depth`
+    ///   * 渲染到目标时的深度值
+    /// * `return`
+    ///   * Ok(true) 执行成功
+    ///   * Ok(false) 当实际没有渲染时
+    ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
+    ///   * Err(String)
+    pub fn draw_final<'a>(
+        &'a self,
+        device: & RenderDevice,
+        queue: & wgpu::Queue,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        geometrys: &'a PostProcessGeometryManager,
+        src: &'a EPostprocessTarget<'_>,
+        renderpass: & mut wgpu::RenderPass<'a>,
+        format: wgpu::TextureFormat,
+        texture_bind_group: &'a wgpu::BindGroup,
+        blend: EBlend,
+        matrix: &[f32; 16],
+        depth: f32,
+    ) -> Result<bool, String> {
+        let alpha = match self.alpha {
+            Some(alpha) => alpha.a,
+            None => 1.0,
+        };
+        match as_target_texture_format(format) {
+            Ok(format) => {
+                let result = self._draw_final(
+                    device, queue, renderpass, format, postprocess_pipelines, geometrys, &src, texture_bind_group, blend, matrix, SimpleRenderExtendsData { alpha, depth }
+                );
+        
+                result
+            },
+            Err(e) => Err(e),
+        }
+    }
 
-    fn _draw_front<'a>(
+    fn _draw_front(
         &self,
         device: &RenderDevice,
         queue: &wgpu::Queue,
+        atlas_allocator: &SafeAtlasAllocator,
         encoder: &mut wgpu::CommandEncoder,
         postprocess_pipelines: &PostProcessPipeline,
-        geometrys: &PostProcessGeometryManager,
-        src: EPostprocessTarget<'a>,
-        dst: (u32, u32),
+        geometrys: & PostProcessGeometryManager,
+        src: &EPostprocessTarget,
+        dst_size: (u32, u32),
         blend: EBlend,
         matrix: &[f32; 16],
-        temp_targets: &mut TemporaryRenderTargets<'a>,
-    ) -> Result<EPostprocessTarget<'a>, String>  {
+    ) -> Result<Option<EPostprocessTarget>, String>  {
         let count = self.flags.len();
-        let resource = src;
 
-        if count > 1 {
+        if count <= 1 {
+            Ok(None)
+        } else {
+            let resource = src;
+            let mut temp_targets: TemporaryRenderTargets = TemporaryRenderTargets::new(atlas_allocator);
+
             let src_id = temp_targets.record_from_other(resource.clone());
             let mut src = (resource.use_w(), resource.use_h(), src_id, resource.format());
 
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
-                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src, dst, blend, matrix, flag, temp_targets);
+
+                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src, dst_size, blend, matrix, flag, &mut temp_targets);
 
                 temp_targets.release(src.2);
 
@@ -225,28 +289,26 @@ impl PostProcess {
             }
         
             let view = temp_targets.get_share_target_view(Some(src.2)).unwrap();
-            let format = temp_targets.get_format(src.2).unwrap();
             
             temp_targets.reset();
 
-            Ok(EPostprocessTarget::from_share_target(view, format))
-        } else {
-            Ok(resource)
+            Ok(Some(EPostprocessTarget::from_share_target(view, resource.format())))
         }
     }
 
-    fn _draw_final(
-        &self,
-        device: &RenderDevice,
-        queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
-        postprocess_pipelines: &PostProcessPipeline,
-        geometrys: &PostProcessGeometryManager,
-        src: (u32, u32, usize, ETexutureFormat),
-        dst: (u32, u32, usize, ETexutureFormat),
+    fn _draw_final<'a>(
+        &'a self,
+        device: & RenderDevice,
+        queue: & wgpu::Queue,
+        renderpass: & mut wgpu::RenderPass<'a>,
+        format: ETexutureFormat,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        geometrys: &'a PostProcessGeometryManager,
+        src: & EPostprocessTarget<'a>,
+        texture_bind_group: &'a wgpu::BindGroup,
         blend: EBlend,
-        matrix: &[f32; 16],
-        temp_targets: &mut TemporaryRenderTargets,
+        matrix: & [f32; 16],
+        extends: SimpleRenderExtendsData,
     ) -> Result<bool, String> {
         let count = self.flags.len();
         if count > 0 {
@@ -255,36 +317,32 @@ impl PostProcess {
                 Some(alpha) => alpha,
                 None => Alpha::default(),
             };
-            let temp_result = self._draw_single(&alpha, device, queue, encoder, postprocess_pipelines, geometrys, src, dst, blend, matrix, flag, temp_targets);
-
-            if let Err(e) = temp_result {
-                return Err(e);
-            }
+            self._draw_single_simple(&alpha, device, queue, renderpass, format, postprocess_pipelines, geometrys, texture_bind_group, src, blend, matrix, extends, flag);
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    fn _draw_single_front(
+    fn _draw_single_front<'a>(
         &self,
-        device: &RenderDevice,
-        queue: &wgpu::Queue,
+        device: & RenderDevice,
+        queue: & wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         postprocess_pipelines: &PostProcessPipeline,
         geometrys: &PostProcessGeometryManager,
         src: (u32, u32, usize, ETexutureFormat),
         dst: (u32, u32),
         blend: EBlend,
-        matrix: &[f32; 16],
+        matrix: & [f32; 16],
         flag: EPostprocessRenderType,
-        temp_targets: &mut TemporaryRenderTargets,
+        temp_targets: & mut TemporaryRenderTargets<'a>,
     ) -> Result<usize, String> {
         let (_, _, src_id, format) = src;
         let (width, height) = dst;
         let dst_id = temp_targets.create_share_target(Some(src_id), width, height, format);
 
-        let result = self._draw_single(&Alpha::default(), device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), blend, matrix, flag, temp_targets);
+        let result = self._draw_single(&Alpha::default(), device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), blend, matrix, flag, temp_targets, SimpleRenderExtendsData::default());
 
         match result {
             Ok(_) => Ok(dst_id),
@@ -292,83 +350,126 @@ impl PostProcess {
         }
     }
 
-    fn _draw_single(
-        &self,
-        alpha: &Alpha,
-        device: &RenderDevice,
-        queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
-        postprocess_pipelines: &PostProcessPipeline,
-        geometrys: &PostProcessGeometryManager,
+    fn _draw_single<'a>(
+        &'a self,
+        alpha: & Alpha,
+        device: & RenderDevice,
+        queue: & wgpu::Queue,
+        encoder: &'a mut wgpu::CommandEncoder,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        geometrys: &'a PostProcessGeometryManager,
         src: (u32, u32, usize, ETexutureFormat),
         dst: (u32, u32, usize, ETexutureFormat),
         blend: EBlend,
-        matrix: &[f32; 16],
+        matrix: & [f32; 16],
         flag: EPostprocessRenderType,
-        temp_targets: &mut TemporaryRenderTargets,
+        temp_targets: & mut TemporaryRenderTargets<'_>,
+        extends: SimpleRenderExtendsData,
     ) -> Result<(), String> {
-        let geometry = geometrys.get_geometry();
         let ( _, _, src_id, _) = src;
         let ( _, _, dst_id, _) = dst;
         match flag {
-            EPostprocessRenderType::ColorEffect => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                color_effect_render(&self.hsb, &self.color_balance, &self.color_scale, &self.vignette, &self.color_filter,  device, queue, encoder, postprocess_pipelines, &self.renders.color_effect.as_ref().unwrap(), geometry, src, dst, blend, matrix);
-            },
-            EPostprocessRenderType::BlurDual => {let blur_dual_result = blur_dual_render(self.blur_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_dual.as_ref().unwrap(), geometry,src, dst, EBlend::None, EBlend::None, blend, matrix, temp_targets);
+            EPostprocessRenderType::BlurDual => {
+                let geometry = geometrys.get_geometry();
+                let blur_dual_result = blur_dual_render(self.blur_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_dual.as_ref().unwrap(), geometry,src, dst, EBlend::None, EBlend::None, blend, matrix, extends, temp_targets);
                 if let Err(e) = blur_dual_result {
                     return Err(e);
                 };
             },
-            EPostprocessRenderType::BlurDirect => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                blur_direct_render(self.blur_direct.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_direct.as_ref().unwrap(), geometry,src, dst, blend, matrix);
-            },
-            EPostprocessRenderType::BlurRadial => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                blur_radial_render(self.blur_radial.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_radial.as_ref().unwrap(), geometry,src, dst, blend, matrix);
-            },
-            EPostprocessRenderType::BlurBokeh => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                blur_bokeh_render(self.blur_bokeh.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines,  self.renders.blur_bokeh.as_ref().unwrap(), geometry,src, dst, blend, matrix);
-            },
             EPostprocessRenderType::BloomDual => {
-                let bloom_dual_result = bloom_dual_render(self.bloom_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines,  self.renders.bloom_dual.as_ref().unwrap(), geometry, src, dst, blend, matrix, temp_targets);
+                let geometry = geometrys.get_geometry();
+                let bloom_dual_result = bloom_dual_render(self.bloom_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines,  self.renders.bloom_dual.as_ref().unwrap(), geometry, src, dst, blend, matrix, extends, temp_targets);
                 if let Err(e) = bloom_dual_result {
                     return Err(e);
                 };
             },
-            EPostprocessRenderType::RadialWave => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                radial_wave_render(self.radial_wave.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.radial_wave.as_ref().unwrap(), geometry, src, dst, blend, matrix);
-            },
             EPostprocessRenderType::HorizonGlitch => {
+                let geometry = geometrys.get_geometry();
                 let src = temp_targets.get_target(src_id).unwrap();
                 let dst = temp_targets.get_target(dst_id).unwrap();
-                horizon_glitch_render(self.horizon_glitch.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.horizon_glitch.as_ref().unwrap(), geometry, geometrys.get_glitch_geometry(), src, dst, blend, matrix);
+                horizon_glitch_render(self.horizon_glitch.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.horizon_glitch.as_ref().unwrap(), geometry, geometrys.get_glitch_geometry(), src, dst, blend, matrix, extends);
             },
-            EPostprocessRenderType::FilterSobel => {
+            _ => {
                 let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                filter_sobel_render(self.filter_sobel.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.filter_sobel.as_ref().unwrap(), geometry, src, dst, blend, matrix);
-            },
-            EPostprocessRenderType::CopyIntensity => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                copy_intensity_render(self.copy.as_ref().unwrap(), alpha, device, queue, encoder, postprocess_pipelines, self.renders.copy_intensity.as_ref().unwrap(), geometry, src, dst, blend, matrix);
-            },
-            EPostprocessRenderType::FinalCopyIntensity => {
-                let src = temp_targets.get_target(src_id).unwrap();
-                let dst = temp_targets.get_target(dst_id).unwrap();
-                copy_intensity_render(&CopyIntensity::default(), alpha, device, queue, encoder, postprocess_pipelines, self.renders.final_copy_renderer.as_ref().unwrap(), geometry, src, dst, blend, matrix);
+                let receiver = temp_targets.get_target(dst_id).unwrap();
+                let texture_bind_group = self.get_texture_bind_group(device, receiver.format(), postprocess_pipelines, src, blend, flag).unwrap();
+                let mut renderpass = encoder.begin_render_pass(
+                    &wgpu::RenderPassDescriptor {
+                        label: None,
+                        color_attachments: &[
+                            wgpu::RenderPassColorAttachment {
+                                view: receiver.view(),
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: true,
+                                }
+                            }
+                        ],
+                        depth_stencil_attachment: None,
+                    }
+                );
+                renderpass.set_viewport(
+                    receiver.use_x() as f32,
+                    receiver.use_y() as f32,
+                    receiver.use_w() as f32,
+                    receiver.use_h() as f32,
+                    0.,
+                    1.
+                );
+                self._draw_single_simple(alpha, device, queue, &mut renderpass, receiver.format(), postprocess_pipelines, geometrys, &texture_bind_group, src, blend, matrix, extends, flag);
             },
         }
         Ok(())
+    }
+
+    fn _draw_single_simple<'a>(
+        &'a self,
+        alpha: & Alpha,
+        device: & RenderDevice,
+        queue: & wgpu::Queue,
+        renderpass: & mut wgpu::RenderPass<'a>,
+        format: ETexutureFormat,
+        postprocess_pipelines: &'a PostProcessPipeline,
+        geometrys: &'a PostProcessGeometryManager,
+        texture_bind_group: &'a wgpu::BindGroup,
+        src: & EPostprocessTarget,
+        blend: EBlend,
+        matrix: & [f32; 16],
+        extends: SimpleRenderExtendsData,
+        flag: EPostprocessRenderType,
+    ) {
+        let geometry = geometrys.get_geometry();
+
+        match flag {
+            EPostprocessRenderType::ColorEffect => {
+                color_effect_render(&self.hsb, &self.color_balance, &self.color_scale, &self.vignette, &self.color_filter,  device, queue, renderpass, format, postprocess_pipelines, &self.renders.color_effect.as_ref().unwrap(), texture_bind_group, geometry, src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::BlurDirect => {
+                blur_direct_render(self.blur_direct.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines, self.renders.blur_direct.as_ref().unwrap(), texture_bind_group, geometry,src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::BlurRadial => {
+                blur_radial_render(self.blur_radial.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines, self.renders.blur_radial.as_ref().unwrap(), texture_bind_group, geometry,src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::BlurBokeh => {
+                blur_bokeh_render(self.blur_bokeh.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines,  self.renders.blur_bokeh.as_ref().unwrap(), texture_bind_group, geometry,src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::RadialWave => {
+                radial_wave_render(self.radial_wave.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines, self.renders.radial_wave.as_ref().unwrap(), texture_bind_group, geometry, src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::FilterSobel => {
+                filter_sobel_render(self.filter_sobel.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines, self.renders.filter_sobel.as_ref().unwrap(), texture_bind_group, geometry, src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::CopyIntensity => {
+                copy_intensity_render(self.copy.as_ref().unwrap(), device, queue, renderpass, format, postprocess_pipelines, self.renders.copy_intensity.as_ref().unwrap(), texture_bind_group, geometry, src, blend, matrix, extends);
+            },
+            EPostprocessRenderType::FinalCopyIntensity => {
+                copy_intensity_render(&CopyIntensity::default(), device, queue, renderpass, format, postprocess_pipelines, self.renders.final_copy_renderer.as_ref().unwrap(), texture_bind_group, geometry, src, blend, matrix, extends);
+            },
+            _ => {
+
+            }
+        }
     }
 
     fn check(
@@ -380,7 +481,7 @@ impl PostProcess {
         src_format: ETexutureFormat,
         dst_format: ETexutureFormat,
         blend: EBlend,
-        force_final_copy: bool,
+        final_step_by_draw_final: bool,
     ) {
         self.flags.clear();
 
@@ -406,50 +507,65 @@ impl PostProcess {
 
         self.renders.check_copy_intensity(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
 
+        let mut final_is_multi_render_steps = false;
+
         if color_effect {
             self.renders.check_color_effect(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::ColorEffect);
+            final_is_multi_render_steps = false;
         }
         if blur_dual {
             self.renders.check_blur_dual(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::BlurDual);
+            final_is_multi_render_steps = true;
         }
         if blur_direct {
             self.renders.check_blur_direct(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::BlurDirect);
+            final_is_multi_render_steps = false;
         }
         if blur_radial {
             self.renders.check_blur_radial(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::BlurRadial);
+            final_is_multi_render_steps = false;
         }
         if blur_bokeh {
             self.renders.check_blur_bokeh(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::BlurBokeh);
+            final_is_multi_render_steps = false;
         }
         if bloom_dual {
             self.renders.check_bloom_dual(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::BloomDual);
+            final_is_multi_render_steps = true;
         }
         if radial_wave {
             self.renders.check_radial_wave(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::RadialWave);
+            final_is_multi_render_steps = false;
         }
         if horizon_glitch {
             self.renders.check_horizon_glitch(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.horizon_glitch.as_mut().unwrap().update(delta_time);
             self.flags.push(EPostprocessRenderType::HorizonGlitch);
+            final_is_multi_render_steps = false;
         }
         if filter_sobel {
             self.renders.check_sobel(device, geometrys, postprocess_pipelines, src_format, dst_format, blend);
             self.flags.push(EPostprocessRenderType::FilterSobel);
+            final_is_multi_render_steps = false;
         }
         if copy_intensity {
             self.flags.push(EPostprocessRenderType::CopyIntensity);
+            final_is_multi_render_steps = false;
+        } else {
+            if self.alpha.is_some() {
+                self.flags.push(EPostprocessRenderType::FinalCopyIntensity);
+                final_is_multi_render_steps = false;
+            }
         }
-        if force_final_copy {
-            self.flags.push(EPostprocessRenderType::FinalCopyIntensity);
-        }
-        if self.alpha.is_some() && !copy_intensity && !force_final_copy {
+
+        if final_step_by_draw_final && final_is_multi_render_steps {
             self.flags.push(EPostprocessRenderType::FinalCopyIntensity);
         }
     }

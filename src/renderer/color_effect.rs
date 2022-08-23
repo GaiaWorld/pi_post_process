@@ -1,6 +1,6 @@
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, vignette::Vignette, color_filter::ColorFilter}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, vignette::Vignette, color_filter::ColorFilter}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
 
-use super::{renderer::Renderer};
+use super::{renderer::{Renderer, ERenderParam}};
 
 pub const COLOR_EFFECT_VS: &'static str = "ColorEffect_vs";
 pub const COLOR_EFFECT_FS: &'static str = "ColorEffect_fs";
@@ -134,22 +134,24 @@ pub fn update_uniform(
     ]));
 }
 
-pub fn color_effect_render(
-    hsb: &Option<HSB>,
-    color_balance: &Option<ColorBalance>,
-    color_scale: &Option<ColorScale>,
-    vignette: &Option<Vignette>,
-    color_filter: &Option<ColorFilter>,
-    device: &wgpu::Device,
-    queue: & wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
-    renderer: &ColorEffectRenderer,
-    image_effect_geo: &Geometry,
-    resource:   &EPostprocessTarget,
-    receiver:   &EPostprocessTarget,
+pub fn color_effect_render<'a>(
+    hsb: & Option<HSB>,
+    color_balance: & Option<ColorBalance>,
+    color_scale: & Option<ColorScale>,
+    vignette: & Option<Vignette>,
+    color_filter: & Option<ColorFilter>,
+    device: & wgpu::Device,
+    queue: &  wgpu::Queue,
+    renderpass: & mut wgpu::RenderPass<'a>, 
+    format: ETexutureFormat,
+    postprocess_pipelines: &'a PostProcessPipeline,
+    renderer: &'a ColorEffectRenderer,
+    texture_bind_group: &'a wgpu::BindGroup,
+    image_effect_geo: &'a Geometry,
+    resource: & EPostprocessTarget,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: & [f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
     let renderer = &renderer.effect;
 
@@ -184,10 +186,11 @@ pub fn color_effect_render(
         EPostprocessShader::ColorEffect,
         EVertexBufferLayout::Position2D,
         blend,
-        receiver.format(),
+        format,
     );
 
-    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     update_uniform(
         renderer,
         &queue,
@@ -208,16 +211,15 @@ pub fn color_effect_render(
     effect_render(
         device,
         queue,
-        encoder,
+        renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
         &renderer.uniform_bind_group,
         &pipeline.pipeline,
         Some("ColorEffect")
-    );
-
+    )
 }

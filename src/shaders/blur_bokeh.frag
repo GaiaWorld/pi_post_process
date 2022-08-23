@@ -3,6 +3,7 @@
 #define SHADER_NAME fragment:BlurDirect
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
@@ -70,5 +71,6 @@ void main() {
     } else {
         gl_FragColor = loop_0(diffuseTex, sampler_diffuseTex, vMainUV);
     }
+    gl_FragColor.a *= vAlpha;
 
 }

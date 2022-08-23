@@ -6,6 +6,8 @@ layout(location = 0) in vec2 position;
 
 layout(set = 0, binding = 0) uniform Model {
     mat4 vertexMatrix;
+    float depth;
+    float alpha;
 };
 
 layout(set = 0, binding = 1) uniform Param {
@@ -19,11 +21,13 @@ layout(location = 1) out vec4 uv23;
 layout(location = 2) out vec4 uv45;
 layout(location = 3) out vec4 uv67;
 layout(location = 5) out vec2 postiion_cs;
+layout(location = 6) out float vAlpha;
 
 void main() {
     vec4 positionUpdate = vec4(position * 2.0, 1.0, 1.0);
 
     gl_Position = vertexMatrix * positionUpdate;
+    gl_Position.z = depth;
 
     postiion_cs = position + 0.5;
     postiion_cs.y = 1.0 - postiion_cs.y;
@@ -32,4 +36,6 @@ void main() {
     uv23 = vec4(vec2( offset.x, -offset.y), vec2(-offset.x, -offset.y));
     uv45 = vec4(vec2( offset.x * 2.,  0.),  vec2(-offset.x * 2.,  0.));
     uv67 = vec4(vec2( 0.,  offset.y * 2.),  vec2(0.,  offset.y * 2.));
+
+    vAlpha = alpha;
 }

@@ -1,4 +1,9 @@
-use crate::material::{shader::{Shader, EPostprocessShader}, target_format::ETexutureFormat, blend::EBlend, pipeline::{Pipeline, UniformBufferInfo}};
+use crate::{material::{shader::{Shader, EPostprocessShader}, target_format::ETexutureFormat, blend::EBlend, pipeline::{Pipeline, UniformBufferInfo}}, temprory_render_target::EPostprocessTarget};
+
+pub enum ERenderParam<'a> {
+    Encoder((&'a mut wgpu::CommandEncoder, &'a EPostprocessTarget<'a>)),
+    RenderPass((&'a mut wgpu::RenderPass<'a>, ETexutureFormat)),
+}
 
 pub struct Renderer {
     pub pipeline_key: u128,

@@ -1,6 +1,7 @@
 #version 450
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 layout(location = 0) out vec4 gl_FragColor;
 
 layout(set = 0, binding = 1) uniform ColorEffect {
@@ -125,4 +126,5 @@ void main() {
     }
 
     gl_FragColor = c;
+    gl_FragColor.a *= vAlpha;
 }

@@ -3,6 +3,7 @@
 #define SHADER_NAME fragment:RadialWave
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
@@ -39,4 +40,5 @@ void main() {
     diff = fade * weight * sin(t * 3.141592653589793);
 
     gl_FragColor = texture(sampler2D(diffuseTex, sampler_diffuseTex), fract(vMainUV + diff * diffuseMat.xy));
+    gl_FragColor.a *= vAlpha;
 }

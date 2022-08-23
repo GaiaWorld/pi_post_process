@@ -1,7 +1,7 @@
 use pi_assets::{asset::GarbageEmpty, mgr::AssetMgr};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}};
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::PostProcessPipeline };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::PostProcessPipeline };
 
 use super::{renderer::Renderer};
 
@@ -91,13 +91,41 @@ pub fn render_down(
     resource:  &EPostprocessTarget,
     receiver:  &EPostprocessTarget,
 ) {
+    let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
+    let mut renderpass = encoder.begin_render_pass(
+        &wgpu::RenderPassDescriptor {
+            label: Some("ColorEffect"),
+            color_attachments: &[
+                wgpu::RenderPassColorAttachment {
+                    view: receiver.view(),
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    }
+                }
+            ],
+            depth_stencil_attachment: None,
+        }
+    );
+
+    // println!("{:?}", to_width);
+    renderpass.set_viewport(
+        receiver.use_x() as f32,
+        receiver.use_y() as f32,
+        receiver.use_w() as f32,
+        receiver.use_h() as f32,
+        0.,
+        1.
+    );
+
     effect_render(
         device,
         queue,
-        encoder,
+        &mut renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        &texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
@@ -117,13 +145,42 @@ pub fn render_up(
     resource:  &EPostprocessTarget,
     receiver:  &EPostprocessTarget
 ) {
+    let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
+
+    let mut renderpass = encoder.begin_render_pass(
+        &wgpu::RenderPassDescriptor {
+            label: Some("ColorEffect"),
+            color_attachments: &[
+                wgpu::RenderPassColorAttachment {
+                    view: receiver.view(),
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    }
+                }
+            ],
+            depth_stencil_attachment: None,
+        }
+    );
+
+    // println!("{:?}", to_width);
+    renderpass.set_viewport(
+        receiver.use_x() as f32,
+        receiver.use_y() as f32,
+        receiver.use_w() as f32,
+        receiver.use_h() as f32,
+        0.,
+        1.
+    );
+    
     effect_render(
         device,
         queue,
-        encoder,
+        &mut renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        &texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
@@ -199,6 +256,7 @@ pub fn blur_dual_render_2(
     matrix: &[f32; 16],
     temp_targets: &mut TemporaryRenderTargets,
     temp_rt_ids: &Vec<usize>,
+    extends: SimpleRenderExtendsData,
 ) -> Result<(), String> {
     
     let (mut from_w, mut from_h, start_id, start_format) = resource;
@@ -225,8 +283,14 @@ pub fn blur_dual_render_2(
     from_w = start_resource.use_w();
     from_h = start_resource.use_h();
 
-    queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
-    queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
+    let mut data = IDENTITY_MATRIX.to_vec(); data.push(1.0); data.push(1.0); 
+    queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
+    let mut data = IDENTITY_MATRIX.to_vec(); data.push(1.0); data.push(1.0); 
+    queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
+
+    // queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
+    // queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
+
     update_uniform_down(renderer_down, queue, &dual_blur, (from_w, from_h));
     update_uniform_up(renderer_up, queue, &dual_blur, (from_w, from_h));
 
@@ -267,7 +331,12 @@ pub fn blur_dual_render_2(
                 need_normal_renderup = false;
 
                 let src = temp_targets.get_target(src_id).unwrap();
-                queue.write_buffer(&renderer.up_final.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+
+                let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+                queue.write_buffer(&renderer.up_final.uniform_buffer, renderer.up_final.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
+
+                // queue.write_buffer(&renderer.up_final.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+
                 update_uniform_up(&renderer.up_final, queue, &dual_blur, (src.use_w(), src.use_h()));
                 render_up(
                     pipeline,
@@ -316,6 +385,8 @@ pub fn blur_dual_render_2(
 
         src_id = *temp_rt_ids.get(0).unwrap();
         let src = temp_targets.get_target(src_id).unwrap();
+
+        let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
         queue.write_buffer(&renderer.up_final.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
         update_uniform_up(&renderer.up_final, queue, &dual_blur, (src.use_w(), src.use_h()));
         render_up(
@@ -347,6 +418,7 @@ pub fn blur_dual_render(
     up_blend: EBlend,
     blend: EBlend,
     matrix: &[f32; 16],
+    extends: SimpleRenderExtendsData,
     temp_targets: &mut TemporaryRenderTargets,
 ) -> Result<(), String> {
     let (mut from_w, mut from_h, start_id, start_format) = resource;
@@ -371,7 +443,7 @@ pub fn blur_dual_render(
         from_h = to_h;
     }
 
-    let result = blur_dual_render_2(dual_blur, renderdevice, queue, encoder, postprocess_pipelines, renderer, image_effect_geo, resource, receiver, down_blend, up_blend, blend, matrix, temp_targets, &temp_rt_ids);
+    let result = blur_dual_render_2(dual_blur, renderdevice, queue, encoder, postprocess_pipelines, renderer, image_effect_geo, resource, receiver, down_blend, up_blend, blend, matrix, temp_targets, &temp_rt_ids, extends);
     
     let realiteration = temp_rt_ids.len();
     for i in 0..realiteration {

@@ -1,8 +1,8 @@
-use crate::{effect::{copy::CopyIntensity, alpha::Alpha}, geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, get_texture_binding_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{effect::{copy::CopyIntensity, alpha::Alpha}, geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, get_texture_binding_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
 
-use super::{renderer::Renderer};
+use super::{renderer::{Renderer, ERenderParam}};
 
-const UNIFORM_PARAM_SIZE: u64 = 9 * 4;
+const UNIFORM_PARAM_SIZE: u64 = 8 * 4;
 
 pub struct CopyIntensityRenderer {
     pub copy: Renderer,
@@ -78,7 +78,6 @@ pub fn update_uniform(
     renderer: &Renderer,
     queue: &wgpu::Queue,
     copyparam: &CopyIntensity,
-    alpha: &Alpha,
 ) {
     // println!("{}, {}, ", copyparam.intensity, copyparam.polygon);
     queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_param, bytemuck::cast_slice(&[
@@ -90,23 +89,23 @@ pub fn update_uniform(
         copyparam.bg_color.1 as f32 / 255.0,
         copyparam.bg_color.2 as f32 / 255.0,
         copyparam.bg_color.3 as f32 / 255.0,
-        alpha.a as f32,
     ]));
 }
 
-pub fn copy_intensity_render(
+pub fn copy_intensity_render<'a> (
     copyparam: &CopyIntensity,
-    alpha: &Alpha,
-    device: &wgpu::Device,
-    queue: & wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: &PostProcessPipeline,
-    renderer: &CopyIntensityRenderer,
-    image_effect_geo: &Geometry,
-    resource:  &EPostprocessTarget,
-    receiver:  &EPostprocessTarget,
+    device: & wgpu::Device,
+    queue: &  wgpu::Queue,
+    renderpass: & mut wgpu::RenderPass<'a>, 
+    format: ETexutureFormat,
+    postprocess_pipelines: &'a  PostProcessPipeline,
+    renderer: &'a CopyIntensityRenderer,
+    texture_bind_group: &'a  wgpu::BindGroup,
+    image_effect_geo: &'a  Geometry,
+    resource:  & EPostprocessTarget,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: & [f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
     let renderer = &renderer.copy;
 
@@ -115,18 +114,19 @@ pub fn copy_intensity_render(
         EPostprocessShader::CopyIntensity,
         EVertexBufferLayout::Position2D,
         blend,
-        receiver.format(),
+        format,
     );
 
-    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
-    update_uniform(renderer, &queue, copyparam, alpha);
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
+    update_uniform(renderer, &queue, copyparam);
     effect_render(
         device,
         queue,
-        encoder,
+        renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,

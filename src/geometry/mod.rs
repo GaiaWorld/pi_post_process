@@ -57,7 +57,7 @@ pub struct GlitchInstanceViewer;
 
 impl GlitchInstanceViewer {
     pub const MAX_INSTANCE_COUNT: usize = 32;
-    pub const DATA_COUNT: u16 = 2;
+    pub const DATA_COUNT: u16 = 4;
     pub fn bytes() -> u16 {
         GlitchInstanceViewer::DATA_COUNT * std::mem::size_of::<f32>() as u16
     }

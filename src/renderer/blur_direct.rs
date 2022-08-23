@@ -1,6 +1,6 @@
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_direct::BlurDirect, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{EPostprocessTarget} };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_direct::BlurDirect, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{EPostprocessTarget} };
 
-use super::{renderer::{Renderer}};
+use super::{renderer::{Renderer, ERenderParam}};
 
 const UNIFORM_PARAM_SIZE: u64 = 4 * 4;
 
@@ -92,43 +92,46 @@ pub fn update_uniform(
     );
 }
 
-pub fn blur_direct_render(
+pub fn blur_direct_render<'a>(
     blur_direct: &BlurDirect,
     device: &wgpu::Device,
     queue: & wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
-    renderer: &BlurDirectRenderer,
-    image_effect_geo: &Geometry,
+    renderpass: & mut wgpu::RenderPass<'a>, 
+    format: ETexutureFormat,
+    postprocess_pipelines: &'a PostProcessPipeline,
+    renderer: &'a BlurDirectRenderer,
+    texture_bind_group: &'a wgpu::BindGroup,
+    image_effect_geo: &'a Geometry,
     resource: &EPostprocessTarget,
-    receiver: &EPostprocessTarget,
     blend: EBlend,
     matrix: &[f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
     let renderer = &renderer.direct;
 
-    // let image_effect_geo = postprocess_renderer.get_geometry(device);
     let pipeline = postprocess_pipelines.get_pipeline(
         EPostprocessShader::BlurDirect,
         EVertexBufferLayout::Position2D,
         blend,
-        receiver.format(),
+        format,
     );
 
-    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     update_uniform(renderer, &queue, blur_direct, (resource.use_w(), resource.use_h()));
-    effect_render(
+
+        effect_render(
         device,
         queue,
-        encoder,
+        renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
         &renderer.uniform_bind_group,
         &pipeline.pipeline,
         Some("BlurDirect")
-    );
+        );
 }

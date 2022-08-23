@@ -176,19 +176,25 @@ impl State {
         // self.postprocess.blur_radial = Some(BlurRadial { radius: 2, iteration: 10, center_x: 0., center_y: 0., start: 0.5, fade: 0.2  });
         // self.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 10, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
 
-        // if self.postprocess.horizon_glitch.is_none() {
-        //     let hg = HorizonGlitch::default();
-        //     self.postprocess.horizon_glitch = Some(hg);
-        // }
-        
-        // self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
+        if self.postprocess.horizon_glitch.is_none() {
+            let mut hg = HorizonGlitch::default();
+            hg.probability = 0.8;
+            hg.max_count = 200;
+            hg.min_count = 50;
+            hg.max_size = 0.05;
+            hg.min_size = 0.01;
+            hg.strength = 0.2;
+            self.postprocess.horizon_glitch = Some(hg);
+        }
+
+        self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
         // self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
         
         // self.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
         // self.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
-        self.postprocess.alpha = Some(Alpha { a: r as f32 / 255.0 });
+        self.postprocess.alpha = Some(Alpha { a: 250 as f32 / 255.0 });
     }
 
     pub fn render(
@@ -226,7 +232,7 @@ impl State {
             &wgpu::TextureViewDescriptor::default()
         );
 
-        let src = PostprocessTexture {
+        let src_texture = PostprocessTexture {
             use_x: 0,
             use_y: 0,
             use_w: self.diffuse_size.width,
@@ -260,12 +266,12 @@ impl State {
         self.postprocess.calc(
             16,
             &self.renderdevice, &mut self.pipelines, &mut self.geometrys,
-            src.format,
+            src_texture.format,
             dst.format,
             blend,
-            false,
         );
 
+        let src = EPostprocessTarget::TextureView(src_texture);
         let result = self.postprocess.draw_front(
             &self.renderdevice, 
             &mut self.queue,
@@ -273,25 +279,53 @@ impl State {
             &self.atlas,
             & self.pipelines,
             & self.geometrys,
-            EPostprocessTarget::TextureView(src),
+            &src,
             (receive_w, receive_h),
         );
 
-        let result: Result<EPostprocessTarget, String> = match result {
-            Ok(view) => {
-                self.postprocess.draw_final(
-                    &self.renderdevice, 
-                    &mut self.queue,
-                    &mut encoder,
-                    &self.atlas,
-                    & self.pipelines,
-                    & self.geometrys,
-                    view,
-                    EPostprocessTarget::TextureView(dst),
-                    blend,
-                    // &IDENTITY_MATRIX,
-                    &[0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.]
-                )
+        let result = match result {
+            Ok(result) => {
+                let src = match result {
+                    Some(src) => src,
+                    None => src,
+                };
+                
+                match self.postprocess.get_final_texture_bind_group(&self.renderdevice, &self.pipelines, &src, ouput_format, blend) {
+                    Some(texture_bind_group) => {
+                        let mut renderpass = encoder.begin_render_pass(
+                            &wgpu::RenderPassDescriptor {
+                                label: Some("ToScreen"),
+                                color_attachments: &[
+                                    wgpu::RenderPassColorAttachment {
+                                        view: dst.view,
+                                        resolve_target: None,
+                                        ops: wgpu::Operations {
+                                            load: wgpu::LoadOp::Load,
+                                            store: true,
+                                        }
+                                    }
+                                ],
+                                depth_stencil_attachment: None,
+                            }
+                        );
+                        renderpass.set_viewport(dst.use_x as f32, dst.use_y as f32, dst.use_w as f32, dst.use_h as f32, 0., 1.);
+                        self.postprocess.draw_final(
+                            &self.renderdevice, 
+                            &mut self.queue,
+                            & self.pipelines,
+                            & self.geometrys,
+                            &src,
+                            &mut renderpass,
+                            ouput_format,
+                            &texture_bind_group,
+                            blend,
+                            // &IDENTITY_MATRIX,
+                            &[0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.],
+                            0.0
+                        )
+                    },
+                    None => Ok(false),
+                }
             },
             Err(e) => {
                 println!("{}", e.to_string());

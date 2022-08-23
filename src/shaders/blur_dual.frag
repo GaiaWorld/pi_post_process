@@ -7,6 +7,7 @@ layout(location = 1) in vec4 uv23;
 layout(location = 2) in vec4 uv45;
 layout(location = 3) in vec4 uv67;
 layout(location = 5) in vec2 postiion_cs;
+layout(location = 6) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
@@ -54,4 +55,5 @@ void main() {
     }
     
     gl_FragColor.rgb *= intensity;
+    gl_FragColor.a *= vAlpha;
 }

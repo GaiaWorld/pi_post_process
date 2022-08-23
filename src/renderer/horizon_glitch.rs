@@ -1,10 +1,10 @@
 
 use pi_render::{rhi::{device::RenderDevice,}, };
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, GlitchInstanceViewer, EGeometryBuffer}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, GlitchInstanceViewer, EGeometryBuffer}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::{Renderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}};
 
-const UNIFORM_PARAM_SIZE: u64 = 2 * 4;
+const UNIFORM_PARAM_SIZE: u64 = 4 * 4;
 
 pub struct HorizonGlitchRenderer {
     pub copy: CopyIntensityRenderer,
@@ -91,6 +91,7 @@ pub fn horizon_glitch_render(
     receiver:   &EPostprocessTarget,
     blend: EBlend,
     matrix: &[f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
     let renderer_copy = &renderer.copy;
     let renderer_glitch = &renderer.glitch;
@@ -98,17 +99,42 @@ pub fn horizon_glitch_render(
     let copyparam = CopyIntensity::default();
     let device = &renderdevice.wgpu_device();
 
-    copy_intensity_render(
-        &copyparam, &Alpha::default(),
-        device, queue, encoder, postprocess_pipelines, renderer_copy, image_effect_geo, resource, receiver, blend, matrix
+    let pipeline = postprocess_pipelines.get_pipeline(
+        EPostprocessShader::CopyIntensity,
+        EVertexBufferLayout::Position2D,
+        EBlend::None,
+        receiver.format(),
     );
+    let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
 
     // let geometry = postprocess_renderer.get_geometry(device);
-    let pipeline = postprocess_pipelines.get_pipeline(
+    let pipeline2 = postprocess_pipelines.get_pipeline(
         EPostprocessShader::HorizonGlitch,
         EVertexBufferLayout::Position2DGlitchInstance,
         EBlend::Premultiply,
         receiver.format(),
+    );
+    
+    let texture_bind_group2 = get_texture_binding_group(&pipeline2.texture_bind_group_layout, device, resource.view());
+
+    let mut renderpass = encoder.begin_render_pass(
+        &wgpu::RenderPassDescriptor {
+            label: Some("HorizonGlitch"),
+            color_attachments: &[
+                wgpu::RenderPassColorAttachment {
+                    view: receiver.view(),
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    }
+                }
+            ],
+            depth_stencil_attachment: None,
+        }
+    );
+    copy_intensity_render(
+        &copyparam, device, queue, &mut renderpass, resource.format(), postprocess_pipelines, renderer_copy, &texture_bind_group, image_effect_geo, resource, blend, matrix, extends
     );
 
     let items = param.get_items();
@@ -135,6 +161,13 @@ pub fn horizon_glitch_render(
             if instance_count < GlitchInstanceViewer::MAX_INSTANCE_COUNT as u32 {
                 instance_data.push(y0);
                 instance_data.push(h);
+                if instance_data.len() % 2 == 0 {
+                    instance_data.push(1.0);
+                    instance_data.push(1.0);
+                } else {
+                    instance_data.push(-1.0);
+                    instance_data.push(1.0);
+                }
     
                 instance_count += 1;
             }
@@ -145,7 +178,8 @@ pub fn horizon_glitch_render(
     if instance_count > 0 {
 
         {
-            queue.write_buffer(&renderer_glitch.uniform_buffer, renderer_glitch.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+            let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+            queue.write_buffer(&renderer_glitch.uniform_buffer, renderer_glitch.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
             queue.write_buffer(
                 &renderer_glitch.uniform_buffer,
                 // renderer.ubo_info.offset_param, 
@@ -157,8 +191,6 @@ pub fn horizon_glitch_render(
                     ]
                 )
             );
-    
-            let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
     
             let us = resource.use_w() as f32 / resource.width () as f32;
             let vs = resource.use_h() as f32 / resource.height() as f32;
@@ -178,22 +210,6 @@ pub fn horizon_glitch_render(
                 &bytemuck::cast_slice(&instance_data)
             );
     
-            let mut renderpass = encoder.begin_render_pass(
-                &wgpu::RenderPassDescriptor {
-                    label: Some("HorizonGlitch"),
-                    color_attachments: &[
-                        wgpu::RenderPassColorAttachment {
-                            view: receiver.view(),
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Load,
-                                store: true,
-                            }
-                        }
-                    ],
-                    depth_stencil_attachment: None,
-                }
-            );
     
             // println!("{:?}", to_width);
             renderpass.set_viewport(
@@ -211,10 +227,10 @@ pub fn horizon_glitch_render(
             //     h
             // );
     
-            renderpass.set_pipeline(&pipeline.pipeline);
+            renderpass.set_pipeline(&pipeline2.pipeline);
     
             renderpass.set_bind_group(0, &renderer_glitch.uniform_bind_group, &[]);
-            renderpass.set_bind_group(1, &texture_bind_group, &[]);
+            renderpass.set_bind_group(1, &texture_bind_group2, &[]);
             
             renderpass.set_vertex_buffer(
                 0, 

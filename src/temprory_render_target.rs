@@ -34,6 +34,31 @@ pub enum EPostprocessTarget<'a> {
     ShareTarget(PostprocessShareTarget),
 }
 
+#[derive(Clone)]
+pub enum EPostprocessResult {
+    Source,
+    ShareTarget(PostprocessShareTarget),
+}
+
+impl EPostprocessResult {
+    pub fn from_share_target(
+        view: ShareTargetView,
+        format: ETexutureFormat,
+    ) -> Self {
+        let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
+        Self::ShareTarget(
+            PostprocessShareTarget {
+                use_x,
+                use_y,
+                use_w,
+                use_h,
+                view,
+                format,
+            }
+        )
+    }
+}
+
 impl<'a> EPostprocessTarget<'a> {
     pub fn from_share_target(
         view: ShareTargetView,

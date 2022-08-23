@@ -67,7 +67,7 @@ pub fn create_geometry(
     geometry.vertex_buffers.insert(key as u16, instance_buffer);
     geometry.vertex_attrs.insert(key as u16, vec![
         wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float32x2,
+            format: wgpu::VertexFormat::Float32x4,
             offset: 0,
             shader_location: 1
         }

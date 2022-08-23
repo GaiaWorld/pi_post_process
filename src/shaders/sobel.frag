@@ -3,6 +3,7 @@
 #define SHADER_NAME fragment:Sobel
 
 layout(location = 0) in vec2 postiion_cs;
+layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
@@ -53,4 +54,6 @@ void main() {
     float g = sqrt(gx * gx + gy * gy);
 
     gl_FragColor = mix(bgColor, color, step(clip, g) * g);
+
+    gl_FragColor.a *= vAlpha;
 }

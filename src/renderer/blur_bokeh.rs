@@ -1,6 +1,6 @@
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_bokeh::BlurBokeh, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{EPostprocessTarget} };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_bokeh::BlurBokeh, postprocess_pipeline::PostProcessPipeline, temprory_render_target::{EPostprocessTarget} };
 
-use super::{renderer::Renderer};
+use super::{renderer::{Renderer, ERenderParam}};
 
 pub struct BlurBokehRenderer {
     pub bokeh: Renderer,
@@ -94,38 +94,41 @@ pub fn update_uniform(
     );
 }
 
-pub fn blur_bokeh_render(
-    blur_bokeh: &BlurBokeh,
-    device: &wgpu::Device,
+pub fn blur_bokeh_render<'a>(
+    blur_bokeh: & BlurBokeh,
+    device: & wgpu::Device,
     queue: & wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
-    renderer: &BlurBokehRenderer,
-    image_effect_geo: &Geometry,
-    resource: &EPostprocessTarget,
-    receiver: &EPostprocessTarget,
+    renderpass: & mut wgpu::RenderPass<'a>, 
+    format: ETexutureFormat,
+    postprocess_pipelines: &'a PostProcessPipeline,
+    renderer: &'a BlurBokehRenderer,
+    texture_bind_group: &'a wgpu::BindGroup,
+    image_effect_geo: &'a Geometry,
+    resource: & EPostprocessTarget,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: & [f32; 16],
+    extends: SimpleRenderExtendsData,
 ) {
     let renderer = &renderer.bokeh;
-
     // let image_effect_geo = postprocess_renderer.check_geometry(device);
     let pipeline = postprocess_pipelines.get_pipeline(
         EPostprocessShader::BlurBokeh,
         EVertexBufferLayout::Position2D,
         blend,
-        receiver.format(),
+        format,
     );
 
-    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer.uniform_buffer, renderer.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     update_uniform(renderer, &queue, blur_bokeh, (resource.use_w(), resource.use_h()));
+
     effect_render(
         device,
         queue,
-        encoder,
+        renderpass,
         image_effect_geo,
         resource,
-        receiver,
+        texture_bind_group,
         &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
