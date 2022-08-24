@@ -309,7 +309,7 @@ impl State {
                             &mut self.queue,
                             & self.pipelines,
                             & self.geometrys,
-                            &src,
+                            src,
                             &mut renderpass,
                             ouput_format,
                             &texture_bind_group,

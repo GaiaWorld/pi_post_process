@@ -223,7 +223,7 @@ impl PostProcess {
         queue: & wgpu::Queue,
         postprocess_pipelines: &'a PostProcessPipeline,
         geometrys: &'a PostProcessGeometryManager,
-        src: &'a EPostprocessTarget<'_>,
+        src: EPostprocessTarget<'a>,
         renderpass: & mut wgpu::RenderPass<'a>,
         format: wgpu::TextureFormat,
         texture_bind_group: &'a wgpu::BindGroup,
