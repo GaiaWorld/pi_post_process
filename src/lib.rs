@@ -11,5 +11,6 @@ pub mod material;
 pub mod renderer;
 pub mod postprocess_pipeline;
 pub mod postprocess_renderer;
+pub mod error;
 
 mod postprocess_flags;

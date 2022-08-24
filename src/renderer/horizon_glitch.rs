@@ -90,7 +90,7 @@ pub fn horizon_glitch_render(
     resource:   &EPostprocessTarget,
     receiver:   &EPostprocessTarget,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: &[f32],
     extends: SimpleRenderExtendsData,
 ) {
     let renderer_copy = &renderer.copy;

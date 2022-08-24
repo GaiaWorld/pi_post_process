@@ -1,6 +1,6 @@
 use pi_assets::{mgr::AssetMgr, asset::GarbageEmpty};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::SafeAtlasAllocator};
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, SimpleRenderExtendsData}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, SimpleRenderExtendsData}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline, error::EPostprocessError };
 
 use super::{blur_dual::{blur_dual_render, BlurDualRenderer, calc_blur_dual_render, blur_dual_render_2}, filter_brightness::{filter_brightness_render, FilterBrightnessRenderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}, renderer::{Renderer, ERenderParam}};
 
@@ -26,10 +26,10 @@ pub fn bloom_dual_render(
     resource:  (u32, u32, usize, ETexutureFormat),
     receiver:  (u32, u32, usize, ETexutureFormat),
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: &[f32],
     extends: SimpleRenderExtendsData,
     temp_targets: &mut TemporaryRenderTargets,
-) -> Result<(), String> {
+) -> Result<(), EPostprocessError> {
 
     let (from_w, from_h, start_id, start_format) = resource;
     let (_, _, final_id, _) = receiver;

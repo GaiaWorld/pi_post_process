@@ -1,5 +1,4 @@
-
-pub const ERROR_NOT_SUPPORT_TARGET_FORMAT: &str = "NOT_SUPPORT_TARGET_FORMAT";
+use crate::error::EPostprocessError;
 
 pub const MOVE_E_TARGET_FORMAT: u128 = 10;
 
@@ -24,12 +23,12 @@ pub fn get_target_texture_format(
 
 pub fn as_target_texture_format(
     e: wgpu::TextureFormat
-) -> Result<ETexutureFormat, String> {
+) -> Result<ETexutureFormat, EPostprocessError> {
     match e {
         wgpu::TextureFormat::Rgba8UnormSrgb => Ok(ETexutureFormat::Rgba8UnormSrgb),
         wgpu::TextureFormat::Rgba8Unorm => Ok(ETexutureFormat::Rgba8Unorm),
         wgpu::TextureFormat::Bgra8UnormSrgb => Ok(ETexutureFormat::Bgra8UnormSrgb),
         wgpu::TextureFormat::Bgra8Unorm => Ok(ETexutureFormat::Bgra8Unorm),
-        _ => Err(String::from(ERROR_NOT_SUPPORT_TARGET_FORMAT)),
+        _ => Err(EPostprocessError::NotSupportTargetFormat),
     }
 }

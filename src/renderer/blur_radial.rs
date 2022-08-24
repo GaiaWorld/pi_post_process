@@ -109,7 +109,7 @@ pub fn blur_radial_render<'a>(
     image_effect_geo: &'a  Geometry,
     resource:  & EPostprocessTarget,
     blend: EBlend,
-    matrix: & [f32; 16],
+    matrix: & [f32],
     extends: SimpleRenderExtendsData,
 ) {
     let renderer = &renderer.radial;

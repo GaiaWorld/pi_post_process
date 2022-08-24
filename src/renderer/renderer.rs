@@ -16,21 +16,21 @@ impl Renderer {
     pub fn update_vertex_matrix(
         &self,
         queue: &wgpu::Queue,
-        vertex_matrix: &[f32; 16]
+        vertex_matrix: &[f32]
     ) {
 
     }
     pub fn update_param(
         &self,
         queue: &wgpu::Queue,
-        param: &[f32; 16]
+        param: &[f32]
     ) {
 
     }
     pub fn update_diffuse_matrix(
         &self,
         queue: &wgpu::Queue,
-        param: &[f32; 16]
+        param: &[f32]
     ) {
 
     }

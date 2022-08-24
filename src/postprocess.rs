@@ -7,7 +7,7 @@ use crate::{effect::{
     hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, area_mask::AreaMask,
     blur_dual::BlurDual, blur_radial::BlurRadial, blur_bokeh::BlurBokeh, blur_direct::BlurDirect,
     vignette::Vignette, copy::CopyIntensity, radial_wave::RadialWave, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, horizon_glitch::HorizonGlitch, alpha::Alpha},
-    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets, EPostprocessResult, PostprocessShareTarget}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::color_effect_render, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render, renderer::ERenderParam}, postprocess_geometry::PostProcessGeometryManager, material::{target_format::{ETexutureFormat, get_target_texture_format, as_target_texture_format}, blend::EBlend, shader::EPostprocessShader, tools::{get_texture_binding_group, SimpleRenderExtendsData}}, geometry::{vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, postprocess_flags::PostprocessFlags, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessPipeline
+    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets, EPostprocessResult, PostprocessShareTarget}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::color_effect_render, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render, renderer::ERenderParam}, postprocess_geometry::PostProcessGeometryManager, material::{target_format::{ETexutureFormat, get_target_texture_format, as_target_texture_format}, blend::EBlend, shader::EPostprocessShader, tools::{get_texture_binding_group, SimpleRenderExtendsData}}, geometry::{vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, postprocess_flags::PostprocessFlags, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessPipeline, error::EPostprocessError
 };
 
 pub struct PostProcess {
@@ -109,20 +109,20 @@ impl PostProcess {
     ///     * 当实际没有渲染 结果时 会返回 传入的src 对应数据
     ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
     ///   * Err(String)
-    pub fn draw_front(
+    pub fn draw_front<'a>(
         &self,
         device: &RenderDevice,
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
-        atlas_allocator: &SafeAtlasAllocator,
+        atlas_allocator: &'a SafeAtlasAllocator,
         postprocess_pipelines: &PostProcessPipeline,
         geometrys: &PostProcessGeometryManager,
-        src: &EPostprocessTarget,
+        src: EPostprocessTarget<'a>,
         dst_size: (u32, u32),
-    ) -> Result<Option<EPostprocessTarget>, String> {
+    ) -> Result<EPostprocessTarget<'a>, EPostprocessError> {
 
         let blend: EBlend = EBlend::None;
-        let matrix: &[f32; 16] = &IDENTITY_MATRIX;
+        let matrix: &[f32] = &IDENTITY_MATRIX;
 
         let result = self._draw_front(
             device, queue, atlas_allocator, encoder, postprocess_pipelines, geometrys, src, dst_size, blend, matrix, 
@@ -228,59 +228,61 @@ impl PostProcess {
         format: wgpu::TextureFormat,
         texture_bind_group: &'a wgpu::BindGroup,
         blend: EBlend,
-        matrix: &[f32; 16],
+        matrix: &[f32],
         depth: f32,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, EPostprocessError> {
         let alpha = match self.alpha {
             Some(alpha) => alpha.a,
             None => 1.0,
         };
-        match as_target_texture_format(format) {
-            Ok(format) => {
-                let result = self._draw_final(
-                    device, queue, renderpass, format, postprocess_pipelines, geometrys, &src, texture_bind_group, blend, matrix, SimpleRenderExtendsData { alpha, depth }
-                );
-        
-                result
-            },
-            Err(e) => Err(e),
+        if matrix.len() == 16 {
+            match as_target_texture_format(format) {
+                Ok(format) => {
+                    let result = self._draw_final(
+                        device, queue, renderpass, format, postprocess_pipelines, geometrys, &src, texture_bind_group, blend, matrix, SimpleRenderExtendsData { alpha, depth }
+                    );
+                    result
+                },
+                Err(e) => Err(e),
+            }
+        } else {
+            Err(EPostprocessError::ParamMatrixSizeError)
         }
     }
 
-    fn _draw_front(
+    fn _draw_front<'a>(
         &self,
         device: &RenderDevice,
         queue: &wgpu::Queue,
-        atlas_allocator: &SafeAtlasAllocator,
+        atlas_allocator: &'a SafeAtlasAllocator,
         encoder: &mut wgpu::CommandEncoder,
         postprocess_pipelines: &PostProcessPipeline,
         geometrys: & PostProcessGeometryManager,
-        src: &EPostprocessTarget,
+        src: EPostprocessTarget<'a>,
         dst_size: (u32, u32),
         blend: EBlend,
-        matrix: &[f32; 16],
-    ) -> Result<Option<EPostprocessTarget>, String>  {
+        matrix: &[f32],
+    ) -> Result<EPostprocessTarget<'a>, EPostprocessError>  {
         let count = self.flags.len();
 
         if count <= 1 {
-            Ok(None)
+            Ok(src)
         } else {
-            let resource = src;
+            let format = src.format();
             let mut temp_targets: TemporaryRenderTargets = TemporaryRenderTargets::new(atlas_allocator);
-
-            let src_id = temp_targets.record_from_other(resource.clone());
-            let mut src = (resource.use_w(), resource.use_h(), src_id, resource.format());
+            let mut src_info = (src.use_w(), src.use_h(), 0, format);
+            src_info.2 = temp_targets.record_from_other(src);
 
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
 
-                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src, dst_size, blend, matrix, flag, &mut temp_targets);
+                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src_info, dst_size, blend, matrix, flag, &mut temp_targets);
 
-                temp_targets.release(src.2);
+                temp_targets.release(src_info.2);
 
                 match temp_result {
                     Ok(id) => {
-                        src.2 = id;
+                        src_info.2 = id;
                     },
                     Err(e) => {
                         return Err(e);
@@ -288,11 +290,11 @@ impl PostProcess {
                 }
             }
         
-            let view = temp_targets.get_share_target_view(Some(src.2)).unwrap();
+            let view = temp_targets.get_share_target_view(Some(src_info.2)).unwrap();
             
             temp_targets.reset();
 
-            Ok(Some(EPostprocessTarget::from_share_target(view, resource.format())))
+            Ok(EPostprocessTarget::from_share_target(view, format))
         }
     }
 
@@ -307,9 +309,9 @@ impl PostProcess {
         src: & EPostprocessTarget<'a>,
         texture_bind_group: &'a wgpu::BindGroup,
         blend: EBlend,
-        matrix: & [f32; 16],
+        matrix: & [f32],
         extends: SimpleRenderExtendsData,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, EPostprocessError> {
         let count = self.flags.len();
         if count > 0 {
             let flag = *self.flags.get(count - 1).unwrap();
@@ -334,10 +336,10 @@ impl PostProcess {
         src: (u32, u32, usize, ETexutureFormat),
         dst: (u32, u32),
         blend: EBlend,
-        matrix: & [f32; 16],
+        matrix: & [f32],
         flag: EPostprocessRenderType,
         temp_targets: & mut TemporaryRenderTargets<'a>,
-    ) -> Result<usize, String> {
+    ) -> Result<usize, EPostprocessError> {
         let (_, _, src_id, format) = src;
         let (width, height) = dst;
         let dst_id = temp_targets.create_share_target(Some(src_id), width, height, format);
@@ -361,11 +363,11 @@ impl PostProcess {
         src: (u32, u32, usize, ETexutureFormat),
         dst: (u32, u32, usize, ETexutureFormat),
         blend: EBlend,
-        matrix: & [f32; 16],
+        matrix: & [f32],
         flag: EPostprocessRenderType,
         temp_targets: & mut TemporaryRenderTargets<'_>,
         extends: SimpleRenderExtendsData,
-    ) -> Result<(), String> {
+    ) -> Result<(), EPostprocessError> {
         let ( _, _, src_id, _) = src;
         let ( _, _, dst_id, _) = dst;
         match flag {
@@ -435,7 +437,7 @@ impl PostProcess {
         texture_bind_group: &'a wgpu::BindGroup,
         src: & EPostprocessTarget,
         blend: EBlend,
-        matrix: & [f32; 16],
+        matrix: & [f32],
         extends: SimpleRenderExtendsData,
         flag: EPostprocessRenderType,
     ) {

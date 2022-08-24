@@ -1,7 +1,7 @@
 use pi_assets::{asset::GarbageEmpty, mgr::AssetMgr};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}};
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::PostProcessPipeline };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::PostProcessPipeline, error::EPostprocessError };
 
 use super::{renderer::Renderer};
 
@@ -253,11 +253,11 @@ pub fn blur_dual_render_2(
     down_blend: EBlend,
     up_blend: EBlend,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: &[f32],
     temp_targets: &mut TemporaryRenderTargets,
     temp_rt_ids: &Vec<usize>,
     extends: SimpleRenderExtendsData,
-) -> Result<(), String> {
+) -> Result<(), EPostprocessError> {
     
     let (mut from_w, mut from_h, start_id, start_format) = resource;
     let (mut to_w, mut to_h, final_id, final_format) = receiver;
@@ -417,10 +417,10 @@ pub fn blur_dual_render(
     down_blend: EBlend,
     up_blend: EBlend,
     blend: EBlend,
-    matrix: &[f32; 16],
+    matrix: &[f32],
     extends: SimpleRenderExtendsData,
     temp_targets: &mut TemporaryRenderTargets,
-) -> Result<(), String> {
+) -> Result<(), EPostprocessError> {
     let (mut from_w, mut from_h, start_id, start_format) = resource;
     let (mut to_w, mut to_h, final_id, final_format) = receiver;
 

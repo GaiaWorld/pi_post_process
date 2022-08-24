@@ -271,7 +271,6 @@ impl State {
             blend,
         );
 
-        let src = EPostprocessTarget::TextureView(src_texture);
         let result = self.postprocess.draw_front(
             &self.renderdevice, 
             &mut self.queue,
@@ -279,17 +278,13 @@ impl State {
             &self.atlas,
             & self.pipelines,
             & self.geometrys,
-            &src,
+            EPostprocessTarget::TextureView(src_texture),
             (receive_w, receive_h),
         );
 
         let result = match result {
             Ok(result) => {
-                let src = match result {
-                    Some(src) => src,
-                    None => src,
-                };
-                
+                let src = result;
                 match self.postprocess.get_final_texture_bind_group(&self.renderdevice, &self.pipelines, &src, ouput_format, blend) {
                     Some(texture_bind_group) => {
                         let mut renderpass = encoder.begin_render_pass(
@@ -328,11 +323,10 @@ impl State {
                 }
             },
             Err(e) => {
-                println!("{}", e.to_string());
+                println!("{:?}", e);
                 Err(e)
             },
         };
-
 
         self.queue.submit(std::iter::once(encoder.finish()));
 
