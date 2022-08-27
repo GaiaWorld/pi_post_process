@@ -1,7 +1,7 @@
 use pi_assets::{asset::GarbageEmpty, mgr::AssetMgr};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}};
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::{PostProcessPipelineMgr, PostprocessMaterail, PostprocessPipeline}, error::EPostprocessError };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::{PostProcessMaterialMgr, PostprocessMaterial, PostprocessPipeline}, error::EPostprocessError };
 
 use super::{renderer::Renderer};
 
@@ -18,7 +18,7 @@ impl BlurDualRenderer {
     const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
     pub fn check_pipeline(
         device: &wgpu::Device,
-        materail: &mut PostprocessMaterail,
+        material: &mut PostprocessMaterial,
         geometry: & Geometry,
         target: wgpu::ColorTargetState,
         primitive: wgpu::PrimitiveState,
@@ -26,7 +26,7 @@ impl BlurDualRenderer {
     ) {
         let vertex_layouts = get_vertex_buffer_layouts(EVertexBufferLayout::Position2D, geometry);
 
-        materail.check_pipeline(
+        material.check_pipeline(
             "BlurDual", device,
             &vertex_layouts,
             target,
@@ -230,7 +230,7 @@ pub fn blur_dual_render_2(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipelineMgr,
+    postprocess_pipelines: & PostProcessMaterialMgr,
     renderer: &BlurDualRenderer,
     geometry: &Geometry,
     resource:  (u32, u32, usize, wgpu::TextureFormat),
@@ -375,7 +375,7 @@ pub fn blur_dual_render(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipelineMgr,
+    postprocess_pipelines: & PostProcessMaterialMgr,
     renderer: &BlurDualRenderer,
     image_effect_geo: &Geometry,
     resource:  (u32, u32, usize, wgpu::TextureFormat),

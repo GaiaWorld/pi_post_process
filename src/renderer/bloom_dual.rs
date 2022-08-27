@@ -1,6 +1,6 @@
 
 use pi_render::{rhi::{device::RenderDevice}};
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, SimpleRenderExtendsData, TextureScaleOffset}, fragment_state::{create_target, create_default_target}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual, alpha::Alpha}, postprocess_pipeline::PostProcessPipelineMgr, error::EPostprocessError };
+use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, SimpleRenderExtendsData, TextureScaleOffset}, fragment_state::{create_target, create_default_target}}, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, effect::{filter_brightness::FilterBrightness, blur_dual::BlurDual, copy::CopyIntensity, bloom_dual::BloomDual, alpha::Alpha}, postprocess_pipeline::PostProcessMaterialMgr, error::EPostprocessError };
 
 use super::{blur_dual::{BlurDualRenderer, calc_blur_dual_render, blur_dual_render_2}, filter_brightness::{filter_brightness_render, FilterBrightnessRenderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}, renderer::{Renderer, ERenderParam}};
 
@@ -20,7 +20,7 @@ pub fn bloom_dual_render(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipelineMgr,
+    postprocess_pipelines: & PostProcessMaterialMgr,
     renderer: &BloomDualRenderer,
     geometry: &Geometry,
     resource:  (u32, u32, usize, wgpu::TextureFormat),

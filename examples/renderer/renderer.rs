@@ -3,7 +3,7 @@ use std::{num::NonZeroU32, time::SystemTime, sync::Arc};
 
 use image::{GenericImageView};
 use pi_assets::{mgr::AssetMgr, asset::GarbageEmpty};
-use pi_postprocess::{postprocess::{PostProcess}, effect::{color_balance::ColorBalance, hsb::HSB, blur_dual::BlurDual, copy::CopyIntensity, blur_direct::BlurDirect, radial_wave::RadialWave, blur_radial::BlurRadial, vignette::Vignette, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, blur_bokeh::BlurBokeh, horizon_glitch::HorizonGlitch, alpha::Alpha}, material::{fragment_state::create_target, blend::{get_blend_state, EBlend}}, postprocess_geometry::PostProcessGeometryManager, postprocess_pipeline::PostProcessPipelineMgr, geometry::IDENTITY_MATRIX, temprory_render_target::{EPostprocessTarget, PostprocessTexture}};
+use pi_postprocess::{postprocess::{PostProcess}, effect::{color_balance::ColorBalance, hsb::HSB, blur_dual::BlurDual, copy::CopyIntensity, blur_direct::BlurDirect, radial_wave::RadialWave, blur_radial::BlurRadial, vignette::Vignette, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, blur_bokeh::BlurBokeh, horizon_glitch::HorizonGlitch, alpha::Alpha}, material::{fragment_state::create_target, blend::{get_blend_state, EBlend}}, postprocess_geometry::PostProcessGeometryManager, postprocess_pipeline::PostProcessMaterialMgr, geometry::IDENTITY_MATRIX, temprory_render_target::{EPostprocessTarget, PostprocessTexture}};
 use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}, rhi::{device::RenderDevice, asset::{RenderRes, }, }};
 use winit::{window::Window, event::WindowEvent};
 
@@ -13,7 +13,7 @@ pub struct State {
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
-    pub pipelines: PostProcessPipelineMgr,
+    pub pipelines: PostProcessMaterialMgr,
     pub geometrys: PostProcessGeometryManager,
     pub postprocess: PostProcess,
     pub value_test: u8,
@@ -62,7 +62,7 @@ impl State {
         surface.configure(&device, &config);
 
         ///// 
-        let pipelines = PostProcessPipelineMgr::new();
+        let pipelines = PostProcessMaterialMgr::new();
         let geometrys = PostProcessGeometryManager::new();
         let postprocess = PostProcess::default();
 

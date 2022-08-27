@@ -6,7 +6,7 @@ use crate::{effect::{
     hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale,
     blur_dual::BlurDual, blur_radial::BlurRadial, blur_bokeh::BlurBokeh, blur_direct::BlurDirect,
     vignette::Vignette, copy::CopyIntensity, radial_wave::RadialWave, color_filter::ColorFilter, filter_sobel::FilterSobel, bloom_dual::BloomDual, horizon_glitch::HorizonGlitch, alpha::Alpha},
-    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::{color_effect_render, ColorEffectRenderer}, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render, renderer::ERenderParam}, postprocess_geometry::PostProcessGeometryManager, material::{ blend::EBlend, shader::EPostprocessShader, tools::{get_texture_binding_group, SimpleRenderExtendsData, TextureScaleOffset}, fragment_state::create_default_target}, geometry::{IDENTITY_MATRIX}, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessPipelineMgr, error::EPostprocessError
+    temprory_render_target::{EPostprocessTarget, TemporaryRenderTargets}, renderer::{copy_intensity::{copy_intensity_render}, blur_dual::{blur_dual_render}, blur_direct::blur_direct_render, blur_radial::blur_radial_render, radial_wave::radial_wave_render, filter_sobel::filter_sobel_render, color_effect::{color_effect_render, ColorEffectRenderer}, bloom_dual::bloom_dual_render, blur_bokeh::blur_bokeh_render, horizon_glitch::horizon_glitch_render, renderer::ERenderParam}, postprocess_geometry::PostProcessGeometryManager, material::{ blend::EBlend, shader::EPostprocessShader, tools::{get_texture_binding_group, SimpleRenderExtendsData, TextureScaleOffset}, fragment_state::create_default_target}, geometry::{IDENTITY_MATRIX}, postprocess_renderer::{PostProcessRenderer, EPostprocessRenderType}, postprocess_pipeline::PostProcessMaterialMgr, error::EPostprocessError
 };
 
 pub struct PostProcess {
@@ -31,11 +31,8 @@ pub struct PostProcess {
     pub filter_sobel:       Option<FilterSobel>,
     pub horizon_glitch:     Option<HorizonGlitch>,
 
-    // pub clear:              Option<(u8, u8, u8, u8)>,
     flags:                  Vec<EPostprocessRenderType>,
     renders:                PostProcessRenderer,
-    texture_scale_offset:   Option<TextureScaleOffset>,
-    texture_bind_group:     Option<wgpu::BindGroup>,
 }
 
 impl Default for PostProcess {
@@ -61,11 +58,8 @@ impl Default for PostProcess {
             filter_sobel:       None,
             horizon_glitch:     None,
 
-            // clear:              None,
             flags:              vec![],
             renders:            PostProcessRenderer::new(),
-            texture_scale_offset:   None,
-            texture_bind_group:     None,
         }
     }
 }
@@ -91,7 +85,7 @@ impl PostProcess {
         &mut self,
         delta_time: u64,
         render_device: &RenderDevice,
-        postprocess_pipelines: &mut PostProcessPipelineMgr,
+        postprocess_pipelines: &mut PostProcessMaterialMgr,
         geometrys: &mut PostProcessGeometryManager,
         target: wgpu::ColorTargetState,
         depth_stencil: Option<wgpu::DepthStencilState>,
@@ -115,7 +109,7 @@ impl PostProcess {
         queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         atlas_allocator: &'a SafeAtlasAllocator,
-        postprocess_pipelines: &PostProcessPipelineMgr,
+        postprocess_pipelines: &PostProcessMaterialMgr,
         geometrys: &PostProcessGeometryManager,
         src: EPostprocessTarget<'a>,
         dst_size: (u32, u32),
@@ -138,7 +132,7 @@ impl PostProcess {
     pub fn get_final_texture_bind_group<'a>(
         &'a self,
         device: &'a RenderDevice,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         src: &'a EPostprocessTarget,
         target: &wgpu::ColorTargetState,
         depth_stencil: &Option<wgpu::DepthStencilState>,
@@ -158,7 +152,7 @@ impl PostProcess {
     fn get_texture_bind_group<'a>(
         &'a self,
         device: &'a RenderDevice,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         src: &'a EPostprocessTarget,
         target: &wgpu::ColorTargetState,
         primitive: &wgpu::PrimitiveState,
@@ -225,7 +219,7 @@ impl PostProcess {
         &'a self,
         device: & RenderDevice,
         queue: & wgpu::Queue,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         geometrys: &'a PostProcessGeometryManager,
         renderpass: & mut wgpu::RenderPass<'a>,
         texture: &'a EPostprocessTarget,
@@ -256,7 +250,7 @@ impl PostProcess {
         queue: &wgpu::Queue,
         atlas_allocator: &'a SafeAtlasAllocator,
         encoder: &mut wgpu::CommandEncoder,
-        postprocess_pipelines: &PostProcessPipelineMgr,
+        postprocess_pipelines: &PostProcessMaterialMgr,
         geometrys: & PostProcessGeometryManager,
         src: EPostprocessTarget<'a>,
         dst_size: (u32, u32),
@@ -306,7 +300,7 @@ impl PostProcess {
         device: & RenderDevice,
         queue: & wgpu::Queue,
         renderpass: & mut wgpu::RenderPass<'a>,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         geometrys: &'a PostProcessGeometryManager,
         texture_scale_offset: &TextureScaleOffset,
         texture_bind_group: &'a wgpu::BindGroup,
@@ -318,11 +312,7 @@ impl PostProcess {
         let count = self.flags.len();
         if count > 0 {
             let flag = *self.flags.get(count - 1).unwrap();
-            let alpha = match self.alpha {
-                Some(alpha) => alpha,
-                None => Alpha::default(),
-            };
-            self._draw_single_simple(&alpha, device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, target, depth_stencil, matrix, extends, flag);
+            self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, target, depth_stencil, matrix, extends, flag);
             Ok(true)
         } else {
             Ok(false)
@@ -334,7 +324,7 @@ impl PostProcess {
         device: & RenderDevice,
         queue: & wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
-        postprocess_pipelines: &PostProcessPipelineMgr,
+        postprocess_pipelines: &PostProcessMaterialMgr,
         geometrys: &PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32),
@@ -349,7 +339,7 @@ impl PostProcess {
         let (width, height) = dst;
         let dst_id = temp_targets.create_share_target(Some(src_id), width, height, format);
 
-        let result = self._draw_single(&Alpha::default(), device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), target, primitive, depth_stencil, matrix, flag, temp_targets, SimpleRenderExtendsData::default());
+        let result = self._draw_single(device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), target, primitive, depth_stencil, matrix, flag, temp_targets, SimpleRenderExtendsData::default());
 
         match result {
             Ok(_) => Ok(dst_id),
@@ -359,11 +349,10 @@ impl PostProcess {
 
     fn _draw_single<'a>(
         &'a self,
-        alpha: & Alpha,
         device: & RenderDevice,
         queue: & wgpu::Queue,
         encoder: &'a mut wgpu::CommandEncoder,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         geometrys: &'a PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32, usize, wgpu::TextureFormat),
@@ -428,7 +417,7 @@ impl PostProcess {
                     0.,
                     1.
                 );
-                self._draw_single_simple(alpha, device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, target, depth_stencil, matrix, extends, flag);
+                self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, target, depth_stencil, matrix, extends, flag);
             },
         }
         Ok(())
@@ -436,11 +425,10 @@ impl PostProcess {
 
     fn _draw_single_simple<'a>(
         &'a self,
-        alpha: & Alpha,
         device: & RenderDevice,
         queue: & wgpu::Queue,
         renderpass: & mut wgpu::RenderPass<'a>,
-        postprocess_pipelines: &'a PostProcessPipelineMgr,
+        postprocess_pipelines: &'a PostProcessMaterialMgr,
         geometrys: &'a PostProcessGeometryManager,
         texture_scale_offset: & TextureScaleOffset,
         texture_bind_group: &'a wgpu::BindGroup,
@@ -488,7 +476,7 @@ impl PostProcess {
         render_device: &RenderDevice,
         delta_time: u64,
         geometrys: &mut PostProcessGeometryManager,
-        postprocess_pipelines: &mut PostProcessPipelineMgr,
+        postprocess_pipelines: &mut PostProcessMaterialMgr,
         target: wgpu::ColorTargetState,
         depth_stencil: Option<wgpu::DepthStencilState>,
         final_step_by_draw_final: bool,

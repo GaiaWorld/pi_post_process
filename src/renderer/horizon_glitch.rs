@@ -1,6 +1,6 @@
 
 use pi_render::{rhi::{device::RenderDevice,}, };
-use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, GlitchInstanceViewer, EGeometryBuffer}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::{PostProcessPipelineMgr, PostprocessMaterail, PostprocessPipeline}, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, GlitchInstanceViewer, EGeometryBuffer}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::{PostProcessMaterialMgr, PostprocessMaterial, PostprocessPipeline}, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::{Renderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}};
 
@@ -15,7 +15,7 @@ impl HorizonGlitchRenderer {
     const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
     pub fn check_pipeline(
         device: &wgpu::Device,
-        materail: &mut PostprocessMaterail,
+        material: &mut PostprocessMaterial,
         geometry: & Geometry,
         target: wgpu::ColorTargetState,
         primitive: wgpu::PrimitiveState,
@@ -23,7 +23,7 @@ impl HorizonGlitchRenderer {
     ) {
         let vertex_layouts = get_vertex_buffer_layouts(EVertexBufferLayout::Position2DGlitchInstance, geometry);
 
-        materail.check_pipeline(
+        material.check_pipeline(
             "HorizonGlitch", device,
             &vertex_layouts,
             target, 
@@ -70,7 +70,7 @@ pub fn horizon_glitch_render(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipelineMgr,
+    postprocess_pipelines: & PostProcessMaterialMgr,
     renderer: &HorizonGlitchRenderer,
     image_effect_geo: &Geometry,
     geometry: &Geometry,

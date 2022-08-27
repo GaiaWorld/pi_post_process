@@ -1,4 +1,4 @@
-use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}}, effect::{hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, vignette::Vignette, color_filter::ColorFilter}, postprocess_pipeline::{PostProcessPipelineMgr, PostprocessMaterail, PostprocessPipeline}, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}}, effect::{hsb::HSB, color_balance::ColorBalance, color_scale::ColorScale, vignette::Vignette, color_filter::ColorFilter}, postprocess_pipeline::{PostProcessMaterialMgr, PostprocessMaterial, PostprocessPipeline}, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::{Renderer, ERenderParam}};
 
@@ -16,7 +16,7 @@ impl ColorEffectRenderer {
     const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
     pub fn check_pipeline(
         device: &wgpu::Device,
-        materail: &mut PostprocessMaterail,
+        material: &mut PostprocessMaterial,
         geometry: & Geometry,
         target: wgpu::ColorTargetState,
         primitive: wgpu::PrimitiveState,
@@ -24,7 +24,7 @@ impl ColorEffectRenderer {
     ) {
         let vertex_layouts = get_vertex_buffer_layouts(EVertexBufferLayout::Position2D, geometry);
 
-        materail.check_pipeline(
+        material.check_pipeline(
             "ColorEffect", device,
             &vertex_layouts,
             target,
@@ -131,7 +131,7 @@ pub fn color_effect_render<'a>(
     device: & wgpu::Device,
     queue: &  wgpu::Queue,
     renderpass: & mut wgpu::RenderPass<'a>, 
-    postprocess_pipelines: &'a PostProcessPipelineMgr,
+    postprocess_pipelines: &'a PostProcessMaterialMgr,
     renderer: &'a ColorEffectRenderer,
     geometry: &'a Geometry,
     texture_scale_offset: &TextureScaleOffset,
