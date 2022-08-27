@@ -1,12 +1,13 @@
 use crate::geometry::{VertexPosition2DViewer, GlitchInstanceViewer, Geometry, EGeometryBuffer};
 
+/// 计划支持 16 个
 #[derive(Debug, Copy, Clone)]
 pub enum EVertexBufferLayout {
     Position2D = 0,
     Position2DGlitchInstance,
 }
 
-pub const MOVE_E_VERTEX_BUFFER_LAYOUT: u128 = 10;
+pub const MOVE_E_VERTEX_BUFFER_LAYOUT: u128 = 16;
 
 pub trait GetVertexBufferLayouts {
     fn get_vertex_buffer_layouts(

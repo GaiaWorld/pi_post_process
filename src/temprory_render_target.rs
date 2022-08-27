@@ -4,8 +4,6 @@ use guillotiere::Rectangle;
 use pi_render::components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor};
 use smallvec::SmallVec;
 
-use crate::{material::target_format::{ETexutureFormat, get_target_texture_format}};
-
 #[derive(Debug, Clone, Copy)]
 pub struct PostprocessTexture<'a> {
     pub use_x: u32,
@@ -15,7 +13,7 @@ pub struct PostprocessTexture<'a> {
     pub width: u32,
     pub height: u32,
     pub view: &'a wgpu::TextureView,
-    pub format: ETexutureFormat,
+    pub format: wgpu::TextureFormat,
 }
 
 #[derive(Clone)]
@@ -25,7 +23,7 @@ pub struct PostprocessShareTarget {
     pub use_w: u32,
     pub use_h: u32,
     pub view: ShareTargetView,
-    pub format: ETexutureFormat,
+    pub format: wgpu::TextureFormat,
 }
 
 #[derive(Clone)]
@@ -43,7 +41,7 @@ pub enum EPostprocessResult {
 impl EPostprocessResult {
     pub fn from_share_target(
         view: ShareTargetView,
-        format: ETexutureFormat,
+        format: wgpu::TextureFormat,
     ) -> Self {
         let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
         Self::ShareTarget(
@@ -62,7 +60,7 @@ impl EPostprocessResult {
 impl<'a> EPostprocessTarget<'a> {
     pub fn from_share_target(
         view: ShareTargetView,
-        format: ETexutureFormat,
+        format: wgpu::TextureFormat,
     ) -> Self {
         let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
         Self::ShareTarget(
@@ -146,7 +144,7 @@ impl<'a> EPostprocessTarget<'a> {
             },
         }
     }
-    pub fn format(&self) -> ETexutureFormat {
+    pub fn format(&self) -> wgpu::TextureFormat {
         match self {
             EPostprocessTarget::TextureView(value) => {
                 value.format
@@ -246,7 +244,7 @@ impl<'a> TemporaryRenderTargets<'a> {
         without_id: Option<usize>,
         width: u32,
         height: u32,
-        format: ETexutureFormat,
+        format: wgpu::TextureFormat,
     ) -> usize {
         let mut without_list = vec![];
 
@@ -271,7 +269,7 @@ impl<'a> TemporaryRenderTargets<'a> {
             self.atlas_allocator,
             width,
             height,
-            get_target_texture_format(format),
+            format,
             &without_list
         );
 
@@ -347,7 +345,7 @@ impl<'a> TemporaryRenderTargets<'a> {
     pub fn get_format(
         &self,
         id: usize
-    ) -> Option<ETexutureFormat> {
+    ) -> Option<wgpu::TextureFormat> {
         let index = self.id_for_index.get(id).unwrap();
         let item = self.targets.get(*index);
 

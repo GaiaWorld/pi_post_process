@@ -1,17 +1,18 @@
 
 
+/// 计划支持 16 个设置 - 2^4
 #[derive(Debug, Copy, Clone)]
 pub enum EBlend {
     None = 0,
     // SrcAlpha , OneMinusSrcAlpha
-    Combine,
+    Combine = 1,
     // One, One
-    Add,
+    Add = 2,
     // One, OneMinusSrcAlpha
-    Premultiply,
+    Premultiply = 3,
 }
 
-pub const MOVE_E_BLEND: u128 = 10;
+pub const MOVE_E_BLEND: u128 = 16;
 
 pub fn get_blend_state(
     e: EBlend

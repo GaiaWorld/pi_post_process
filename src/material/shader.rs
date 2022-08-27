@@ -6,6 +6,7 @@ pub struct Shader {
     pub fs_module: wgpu::ShaderModule,
 }
 
+/// 计划支持
 #[derive(Debug, Copy, Clone)]
 pub enum EPostprocessShader {
     CopyIntensity = 1,

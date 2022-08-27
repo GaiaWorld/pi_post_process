@@ -3,8 +3,10 @@
 pub mod shader;
 pub mod tools;
 pub mod blend;
-pub mod target_format;
+pub mod depth_and_stencil;
 pub mod pipeline;
+pub mod vertex_state;
+pub mod fragment_state;
 
 pub mod material;
 pub mod texture_block;

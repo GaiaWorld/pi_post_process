@@ -1,7 +1,7 @@
 use pi_assets::{asset::GarbageEmpty, mgr::AssetMgr};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}};
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, IDENTITY_MATRIX}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::PostProcessPipeline, error::EPostprocessError };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::{PostProcessPipelineMgr, PostprocessMaterail, PostprocessPipeline}, error::EPostprocessError };
 
 use super::{renderer::Renderer};
 
@@ -14,75 +14,63 @@ pub struct BlurDualRenderer {
     pub up_final: Renderer,
 }
 
-pub fn get_pipeline(
-    key: u128,
-    vertex_layouts: &Vec<wgpu::VertexBufferLayout>,
-    device: &wgpu::Device,
-    shader: &Shader,
-    blend: EBlend,
-    format: ETexutureFormat,
-) -> Pipeline {
-    
-    let vs_state = wgpu::VertexState {
-        module: &shader.vs_module,
-        entry_point: "main",
-        buffers: &vertex_layouts,
-    };
+impl BlurDualRenderer {
+    const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
+    pub fn check_pipeline(
+        device: &wgpu::Device,
+        materail: &mut PostprocessMaterail,
+        geometry: & Geometry,
+        target: wgpu::ColorTargetState,
+        primitive: wgpu::PrimitiveState,
+        depth_stencil: Option<wgpu::DepthStencilState>
+    ) {
+        let vertex_layouts = get_vertex_buffer_layouts(EVertexBufferLayout::Position2D, geometry);
 
-    let fs_state = wgpu::FragmentState {
-        module: &shader.fs_module,
-        entry_point: "main",
-        targets: &[
-            wgpu::ColorTargetState {
-                format: get_target_texture_format(format),
-                blend: get_blend_state(blend),
-                // blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            }
-        ],
-    };
-
-    Pipeline::new(
-        key,
-        "BlurDual",
-        vs_state,
-        fs_state,
-        device,
-        wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::VERTEX,
-    )
-}
-
-pub fn get_renderer(
-    device: &wgpu::Device,
-    pipeline: &Pipeline,
-) -> Renderer {
-    let ubo_info: UniformBufferInfo = UniformBufferInfo {
-        offset_vertex_matrix: 0,
-        size_vertex_matrix: VERTEX_MATERIX_SIZE,
-        offset_param: device.limits().min_uniform_buffer_offset_alignment as u64,
-        size_param: UNIFORM_PARAM_SIZE,
-        offset_diffuse_matrix: device.limits().min_uniform_buffer_offset_alignment as u64 * 2,
-        size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
-        uniform_size: device.limits().min_uniform_buffer_offset_alignment as u64 * 3,
-    };
-
-    let (uniform_buffer, uniform_bind_group) = get_uniform_bind_group(
-        device,
-        &pipeline.uniform_bind_group_layout,
-        &ubo_info
-    );
-
-    Renderer {
-        pipeline_key: pipeline.key,
-        uniform_buffer,
-        uniform_bind_group,
-        ubo_info,
+        materail.check_pipeline(
+            "BlurDual", device,
+            &vertex_layouts,
+            target,
+            Self::UNIFORM_BIND_0_VISIBILITY,
+            primitive, depth_stencil
+        );
     }
+    
+    pub fn get_renderer(
+        device: &wgpu::Device,
+    ) -> Renderer {
+        let ubo_info: UniformBufferInfo = UniformBufferInfo {
+            offset_vertex_matrix: 0,
+            size_vertex_matrix: VERTEX_MATERIX_SIZE,
+            offset_param: device.limits().min_uniform_buffer_offset_alignment as u64,
+            size_param: UNIFORM_PARAM_SIZE,
+            offset_diffuse_matrix: device.limits().min_uniform_buffer_offset_alignment as u64 * 2,
+            size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
+            uniform_size: device.limits().min_uniform_buffer_offset_alignment as u64 * 3,
+        };
+    
+        let uniform_bind_group_layout = PostprocessPipeline::uniform_bind_group_layout(
+            device, 
+            Self::UNIFORM_BIND_0_VISIBILITY,
+        );
+
+        let (uniform_buffer, uniform_bind_group) = get_uniform_bind_group(
+            device,
+            &uniform_bind_group_layout,
+            &ubo_info
+        );
+
+        Renderer {
+            uniform_buffer,
+            uniform_bind_group,
+            ubo_info,
+        }
+    }
+
 }
 
 
 pub fn render_down(
-    pipeline: &Pipeline,
+    pipeline: &PostprocessPipeline,
     renderer: &Renderer,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -91,6 +79,8 @@ pub fn render_down(
     resource:  &EPostprocessTarget,
     receiver:  &EPostprocessTarget,
 ) {
+    
+    let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(resource.use_x(), resource.use_y(), resource.use_w(), resource.use_h(), resource.width(), resource.height());
     let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
     let mut renderpass = encoder.begin_render_pass(
         &wgpu::RenderPassDescriptor {
@@ -120,23 +110,20 @@ pub fn render_down(
     );
 
     effect_render(
-        device,
         queue,
         &mut renderpass,
         image_effect_geo,
-        resource,
+        &texture_scale_offset,
         &texture_bind_group,
-        &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
         &renderer.uniform_bind_group,
         &pipeline.pipeline,
-        Some("BlurDualDown")
     );
 }
 
 pub fn render_up(
-    pipeline: &Pipeline,
+    pipeline: &PostprocessPipeline,
     renderer: &Renderer,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -145,6 +132,7 @@ pub fn render_up(
     resource:  &EPostprocessTarget,
     receiver:  &EPostprocessTarget
 ) {
+    let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(resource.use_x(), resource.use_y(), resource.use_w(), resource.use_h(), resource.width(), resource.height());
     let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
 
     let mut renderpass = encoder.begin_render_pass(
@@ -175,18 +163,15 @@ pub fn render_up(
     );
     
     effect_render(
-        device,
         queue,
         &mut renderpass,
         image_effect_geo,
-        resource,
+        &texture_scale_offset,
         &texture_bind_group,
-        &pipeline.texture_bind_group_layout,
         &renderer.uniform_buffer,
         renderer.ubo_info.offset_diffuse_matrix,
         &renderer.uniform_bind_group,
         &pipeline.pipeline,
-        Some("BlurDualUp")
     );
 }
 
@@ -212,8 +197,8 @@ pub fn update_uniform_up(
 
 pub fn calc_blur_dual_render(
     dual_blur: &BlurDual,
-    resource:  (u32, u32, usize, ETexutureFormat),
-    receiver:  (u32, u32, usize, ETexutureFormat),
+    resource:  (u32, u32, usize, wgpu::TextureFormat),
+    receiver:  (u32, u32, usize, wgpu::TextureFormat),
     temp_targets: &mut TemporaryRenderTargets,
 ) -> Vec<usize> {
     let (mut from_w, mut from_h, start_id, start_format) = resource;
@@ -245,14 +230,14 @@ pub fn blur_dual_render_2(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
+    postprocess_pipelines: & PostProcessPipelineMgr,
     renderer: &BlurDualRenderer,
-    image_effect_geo: &Geometry,
-    resource:  (u32, u32, usize, ETexutureFormat),
-    receiver:  (u32, u32, usize, ETexutureFormat),
-    down_blend: EBlend,
-    up_blend: EBlend,
-    blend: EBlend,
+    geometry: &Geometry,
+    resource:  (u32, u32, usize, wgpu::TextureFormat),
+    receiver:  (u32, u32, usize, wgpu::TextureFormat),
+    target_for_up: &wgpu::ColorTargetState,
+    target: &wgpu::ColorTargetState,
+    depth_stencil: &Option<wgpu::DepthStencilState>,
     matrix: &[f32],
     temp_targets: &mut TemporaryRenderTargets,
     temp_rt_ids: &Vec<usize>,
@@ -270,12 +255,8 @@ pub fn blur_dual_render_2(
 
     let realiteration = temp_rt_ids.len();
 
-    let pipeline = postprocess_pipelines.get_pipeline(
-        EPostprocessShader::BlurDual,
-        EVertexBufferLayout::Position2D,
-        down_blend,
-        start_resource.format(),
-    );
+    let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
+    let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(&create_default_target(), &primitive, &None);
 
     let renderer_down = &renderer.down;
     let renderer_up = &renderer.up;
@@ -305,7 +286,7 @@ pub fn blur_dual_render_2(
             renderdevice.wgpu_device(),
             &queue,
             encoder,
-            image_effect_geo,
+            geometry,
             temp_targets.get_target(src_id).unwrap(),
             temp_targets.get_target(dst_id).unwrap()
         );
@@ -316,12 +297,7 @@ pub fn blur_dual_render_2(
     let mut need_normal_renderup = true;
 
     if dual_blur.simplified_up {
-        let pipeline = postprocess_pipelines.get_pipeline(
-            EPostprocessShader::BlurDual,
-            EVertexBufferLayout::Position2D,
-            blend,
-            final_receiver.format(),
-        );
+        let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(target, &primitive, depth_stencil);
 
         src_id = *temp_rt_ids.get(realiteration - 1).unwrap();
         dst_id = final_id;
@@ -344,7 +320,7 @@ pub fn blur_dual_render_2(
                     renderdevice.wgpu_device(),
                     &queue,
                     encoder,
-                    image_effect_geo,
+                    geometry,
                     temp_targets.get_target(src_id).unwrap(),
                     final_receiver
                 );
@@ -353,12 +329,7 @@ pub fn blur_dual_render_2(
     }
 
     if need_normal_renderup {
-        let pipeline = postprocess_pipelines.get_pipeline(
-            EPostprocessShader::BlurDual,
-            EVertexBufferLayout::Position2D,
-            up_blend,
-            start_resource.format(),
-        );
+        let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(target_for_up, &primitive, &None);
 
         for i in (realiteration-1)..0 {
     
@@ -370,18 +341,13 @@ pub fn blur_dual_render_2(
                 renderdevice.wgpu_device(),
                 &queue,
                 encoder,
-                image_effect_geo,
+                geometry,
                 temp_targets.get_target(src_id).unwrap(),
                 temp_targets.get_target(dst_id).unwrap(),
             );
         }
     
-        let pipeline = postprocess_pipelines.get_pipeline(
-            EPostprocessShader::BlurDual,
-            EVertexBufferLayout::Position2D,
-            blend,
-            final_receiver.format(),
-        );
+        let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(target, &primitive, depth_stencil);
 
         src_id = *temp_rt_ids.get(0).unwrap();
         let src = temp_targets.get_target(src_id).unwrap();
@@ -395,7 +361,7 @@ pub fn blur_dual_render_2(
             renderdevice.wgpu_device(),
             &queue,
             encoder,
-            image_effect_geo,
+            geometry,
             src,
             final_receiver
         );
@@ -409,18 +375,20 @@ pub fn blur_dual_render(
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
+    postprocess_pipelines: & PostProcessPipelineMgr,
     renderer: &BlurDualRenderer,
     image_effect_geo: &Geometry,
-    resource:  (u32, u32, usize, ETexutureFormat),
-    receiver:  (u32, u32, usize, ETexutureFormat),
-    down_blend: EBlend,
-    up_blend: EBlend,
-    blend: EBlend,
+    resource:  (u32, u32, usize, wgpu::TextureFormat),
+    receiver:  (u32, u32, usize, wgpu::TextureFormat),
     matrix: &[f32],
     extends: SimpleRenderExtendsData,
     temp_targets: &mut TemporaryRenderTargets,
 ) -> Result<(), EPostprocessError> {
+    
+    let target_for_up: wgpu::ColorTargetState = create_default_target();
+    let target: wgpu::ColorTargetState = create_default_target();
+    let depth_stencil: Option<wgpu::DepthStencilState> = None;
+
     let (mut from_w, mut from_h, start_id, start_format) = resource;
     let (mut to_w, mut to_h, final_id, final_format) = receiver;
 
@@ -443,7 +411,7 @@ pub fn blur_dual_render(
         from_h = to_h;
     }
 
-    let result = blur_dual_render_2(dual_blur, renderdevice, queue, encoder, postprocess_pipelines, renderer, image_effect_geo, resource, receiver, down_blend, up_blend, blend, matrix, temp_targets, &temp_rt_ids, extends);
+    let result = blur_dual_render_2(dual_blur, renderdevice, queue, encoder, postprocess_pipelines, renderer, image_effect_geo, resource, receiver, &target_for_up, &target, &depth_stencil, matrix, temp_targets, &temp_rt_ids, extends);
     
     let realiteration = temp_rt_ids.len();
     for i in 0..realiteration {

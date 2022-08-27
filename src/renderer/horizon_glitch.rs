@@ -1,6 +1,6 @@
 
 use pi_render::{rhi::{device::RenderDevice,}, };
-use crate::{geometry::{Geometry, vertex_buffer_layout::EVertexBufferLayout, GlitchInstanceViewer, EGeometryBuffer}, material::{target_format::{get_target_texture_format, ETexutureFormat}, blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData}, pipeline::{Pipeline, UniformBufferInfo}}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::PostProcessPipeline, temprory_render_target:: EPostprocessTarget };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, GlitchInstanceViewer, EGeometryBuffer}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_texture_binding_group, VERTEX_MATERIX_SIZE, get_uniform_bind_group, DIFFUSE_MATERIX_SIZE, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::{horizon_glitch::HorizonGlitch, copy::CopyIntensity, alpha::Alpha}, postprocess_pipeline::{PostProcessPipelineMgr, PostprocessMaterail, PostprocessPipeline}, temprory_render_target:: EPostprocessTarget };
 
 use super::{renderer::{Renderer}, copy_intensity::{copy_intensity_render, CopyIntensityRenderer}};
 
@@ -11,109 +11,91 @@ pub struct HorizonGlitchRenderer {
     pub glitch: Renderer,
 }
 
-pub fn get_pipeline(
-    key: u128,
-    vertex_layouts: &Vec<wgpu::VertexBufferLayout>,
-    device: &wgpu::Device,
-    shader: &Shader,
-    blend: EBlend,
-    format: ETexutureFormat,
-) -> Pipeline {
+impl HorizonGlitchRenderer {
+    const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
+    pub fn check_pipeline(
+        device: &wgpu::Device,
+        materail: &mut PostprocessMaterail,
+        geometry: & Geometry,
+        target: wgpu::ColorTargetState,
+        primitive: wgpu::PrimitiveState,
+        depth_stencil: Option<wgpu::DepthStencilState>
+    ) {
+        let vertex_layouts = get_vertex_buffer_layouts(EVertexBufferLayout::Position2DGlitchInstance, geometry);
 
-    let vs_state = wgpu::VertexState {
-        module: &shader.vs_module,
-        entry_point: "main",
-        buffers: &vertex_layouts,
-    };
-
-    let fs_state = wgpu::FragmentState {
-        module: &shader.fs_module,
-        entry_point: "main",
-        targets: &[
-            wgpu::ColorTargetState {
-                format: get_target_texture_format(format),
-                blend: get_blend_state(blend),
-                // blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            }
-        ],
-    };
-
-    Pipeline::new(
-        key,
-        "HorizonGlitch",
-        vs_state,
-        fs_state,
-        device,
-        wgpu::ShaderStages::FRAGMENT,
-    )
-}
-
-pub fn get_renderer(
-    device: &wgpu::Device,
-    pipeline: &Pipeline,
-) -> Renderer {
-    let ubo_info: UniformBufferInfo = UniformBufferInfo {
-        offset_vertex_matrix: 0,
-        size_vertex_matrix: VERTEX_MATERIX_SIZE,
-        offset_param: device.limits().min_uniform_buffer_offset_alignment as u64,
-        size_param: UNIFORM_PARAM_SIZE,
-        offset_diffuse_matrix: device.limits().min_uniform_buffer_offset_alignment as u64 * 2,
-        size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
-        uniform_size: device.limits().min_uniform_buffer_offset_alignment as u64 * 3,
-    };
-
-    let (uniform_buffer, uniform_bind_group) = get_uniform_bind_group(
-        device,
-        &pipeline.uniform_bind_group_layout,
-        &ubo_info
-    );
-
-    Renderer {
-        pipeline_key: pipeline.key,
-        uniform_buffer,
-        uniform_bind_group,
-        ubo_info,
+        materail.check_pipeline(
+            "HorizonGlitch", device,
+            &vertex_layouts,
+            target, 
+            Self::UNIFORM_BIND_0_VISIBILITY,
+            primitive, depth_stencil
+        );
     }
-}
 
+    pub fn get_renderer(
+        device: &wgpu::Device,
+    ) -> Renderer {
+        let ubo_info: UniformBufferInfo = UniformBufferInfo {
+            offset_vertex_matrix: 0,
+            size_vertex_matrix: VERTEX_MATERIX_SIZE,
+            offset_param: device.limits().min_uniform_buffer_offset_alignment as u64,
+            size_param: UNIFORM_PARAM_SIZE,
+            offset_diffuse_matrix: device.limits().min_uniform_buffer_offset_alignment as u64 * 2,
+            size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
+            uniform_size: device.limits().min_uniform_buffer_offset_alignment as u64 * 3,
+        };
+    
+        let uniform_bind_group_layout = PostprocessPipeline::uniform_bind_group_layout(
+            device, 
+            Self::UNIFORM_BIND_0_VISIBILITY,
+        );
+    
+        let (uniform_buffer, uniform_bind_group) = get_uniform_bind_group(
+            device,
+            &uniform_bind_group_layout,
+            &ubo_info
+        );
+    
+        Renderer {
+            uniform_buffer,
+            uniform_bind_group,
+            ubo_info,
+        }
+    }
+    
+}
  
 pub fn horizon_glitch_render(
     param: &HorizonGlitch,
     renderdevice: &RenderDevice,
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    postprocess_pipelines: & PostProcessPipeline,
+    postprocess_pipelines: & PostProcessPipelineMgr,
     renderer: &HorizonGlitchRenderer,
     image_effect_geo: &Geometry,
     geometry: &Geometry,
     resource:   &EPostprocessTarget,
     receiver:   &EPostprocessTarget,
-    blend: EBlend,
     matrix: &[f32],
     extends: SimpleRenderExtendsData,
 ) {
+
+    let target: wgpu::ColorTargetState = create_default_target();
+    let depth_stencil: Option<wgpu::DepthStencilState> = None;
+
     let renderer_copy = &renderer.copy;
     let renderer_glitch = &renderer.glitch;
 
     let copyparam = CopyIntensity::default();
     let device = &renderdevice.wgpu_device();
 
-    let pipeline = postprocess_pipelines.get_pipeline(
-        EPostprocessShader::CopyIntensity,
-        EVertexBufferLayout::Position2D,
-        EBlend::None,
-        receiver.format(),
-    );
+    let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
+    let pipeline = postprocess_pipelines.get_material(EPostprocessShader::CopyIntensity).get_pipeline(&target, &primitive, &depth_stencil);
+
+    let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(resource.use_x(), resource.use_y(), resource.use_w(), resource.use_h(), resource.width(), resource.height());
     let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
 
-    // let geometry = postprocess_renderer.get_geometry(device);
-    let pipeline2 = postprocess_pipelines.get_pipeline(
-        EPostprocessShader::HorizonGlitch,
-        EVertexBufferLayout::Position2DGlitchInstance,
-        EBlend::Premultiply,
-        receiver.format(),
-    );
+    let pipeline2 = postprocess_pipelines.get_material(EPostprocessShader::HorizonGlitch).get_pipeline(&target, &primitive, &depth_stencil);
     
     let texture_bind_group2 = get_texture_binding_group(&pipeline2.texture_bind_group_layout, device, resource.view());
 
@@ -134,7 +116,7 @@ pub fn horizon_glitch_render(
         }
     );
     copy_intensity_render(
-        &copyparam, device, queue, &mut renderpass, resource.format(), postprocess_pipelines, renderer_copy, &texture_bind_group, image_effect_geo, resource, blend, matrix, extends
+        &copyparam, device, queue, &mut renderpass, postprocess_pipelines, renderer_copy, image_effect_geo, &texture_scale_offset, &texture_bind_group, &target, &depth_stencil, matrix, extends
     );
 
     let items = param.get_items();
@@ -192,10 +174,10 @@ pub fn horizon_glitch_render(
                 )
             );
     
-            let us = resource.use_w() as f32 / resource.width () as f32;
-            let vs = resource.use_h() as f32 / resource.height() as f32;
-            let uo = resource.use_x() as f32 / resource.width () as f32;
-            let vo = resource.use_y() as f32 / resource.height() as f32;
+            let us = 1.0 / texture_scale_offset.u_scale;
+            let vs = 1.0 / texture_scale_offset.v_scale;
+            let uo = texture_scale_offset.u_offset;
+            let vo = texture_scale_offset.v_offset;
             // println!("{:?}", (x, y, w, h));
             queue.write_buffer(
                 &renderer_glitch.uniform_buffer,

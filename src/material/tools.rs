@@ -1,11 +1,52 @@
 
 use crate::{geometry::{Geometry, EGeometryBuffer}, temprory_render_target::EPostprocessTarget};
 
-use super::{shader::Shader, pipeline::UniformBufferInfo};
+use super::{shader::Shader};
 
 pub const SIMPLE_RENDER_EXTEND_FLOAT_COUNT: u16 = 2;
 pub const VERTEX_MATERIX_SIZE: u64 = (16 + (SIMPLE_RENDER_EXTEND_FLOAT_COUNT / 4 + 1) * 4) as u64 * 4;
 pub const DIFFUSE_MATERIX_SIZE: u64 = 4 * 4;
+
+pub struct TextureScaleOffset {
+    pub use_x: u32,
+    pub use_y: u32,
+    pub use_w: u32,
+    pub use_h: u32,
+    pub width: u32,
+    pub height: u32,
+    pub u_scale: f32,
+    pub v_scale: f32,
+    pub u_offset: f32,
+    pub v_offset: f32,
+}
+
+impl TextureScaleOffset {
+    pub fn from_rect(
+        use_x: u32,
+        use_y: u32,
+        use_w: u32,
+        use_h: u32,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let u_scale = width  as f32 / use_w as f32;
+        let v_scale = height as f32 / use_h as f32;
+        let u_offset = use_x as f32 / width  as f32;
+        let v_offset = use_y as f32 / height as f32;
+        
+        Self { u_scale, v_scale, u_offset, v_offset, use_x, use_y, use_w, use_h, width, height }
+    }
+}
+
+pub struct UniformBufferInfo {
+    pub offset_vertex_matrix: u64,
+    pub size_vertex_matrix: u64,
+    pub offset_param: u64,
+    pub size_param: u64,
+    pub offset_diffuse_matrix: u64,
+    pub size_diffuse_matrix: u64,
+    pub uniform_size: u64,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct SimpleRenderExtendsData {
@@ -59,24 +100,21 @@ pub fn get_texture_binding_group(
 }
 
 pub fn effect_render<'a>(
-    device: &wgpu::Device,
     queue: &wgpu::Queue,
     renderpass: &mut wgpu::RenderPass<'a>,
-    image_effect_geo: &'a Geometry,
-    resource: &EPostprocessTarget,
+    geometry: &'a Geometry,
+    texture_scale_offset: &TextureScaleOffset,
     texture_bind_group: &'a wgpu::BindGroup,
-    texture_bind_group_layout: &'a wgpu::BindGroupLayout,
     texture_uniform_buffer: &'a wgpu::Buffer,
     texture_uniform_offset: u64,
     uniform_bind_group: &'a wgpu::BindGroup,
     pipeline: &'a wgpu::RenderPipeline,
-    label: Option<&str>,
 ) {
 
-    let us = resource.use_w() as f32 / resource.width () as f32;
-    let vs = resource.use_h() as f32 / resource.height() as f32;
-    let uo = resource.use_x() as f32 / resource.width () as f32;
-    let vo = resource.use_y() as f32 / resource.height() as f32;
+    let us = 1.0 / texture_scale_offset.u_scale;
+    let vs = 1.0 / texture_scale_offset.v_scale;
+    let uo = texture_scale_offset.u_offset;
+    let vo = texture_scale_offset.v_offset;
     // println!("{:?}", (x, y, w, h));
     queue.write_buffer(texture_uniform_buffer, texture_uniform_offset, bytemuck::cast_slice(&[us, vs, uo, vo]));
 
@@ -94,14 +132,14 @@ pub fn effect_render<'a>(
 
     renderpass.set_vertex_buffer(
         0, 
-        image_effect_geo.vertex_buffers.get(&(EGeometryBuffer::Position2D as u16)).unwrap().slice(..)
+        geometry.vertex_buffers.get(&(EGeometryBuffer::Position2D as u16)).unwrap().slice(..)
     );
     renderpass.set_index_buffer(
-        image_effect_geo.indices_buffers.get(&(EGeometryBuffer::Indices as u16)).unwrap().slice(..),
+        geometry.indices_buffers.get(&(EGeometryBuffer::Indices as u16)).unwrap().slice(..),
         wgpu::IndexFormat::Uint16
     );
 
-    let indices_count = *image_effect_geo.indices_records.get(&(EGeometryBuffer::Indices as u16)).unwrap();
+    let indices_count = *geometry.indices_records.get(&(EGeometryBuffer::Indices as u16)).unwrap();
     renderpass.draw_indexed(0..indices_count, 0, 0..1);
 }
 
