@@ -16,7 +16,7 @@ impl FilterBrightnessRenderer {
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
         geometry: & Geometry,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {
@@ -25,7 +25,7 @@ impl FilterBrightnessRenderer {
         material.check_pipeline(
             "FilterBrightness", device,
             &vertex_layouts,
-            target, 
+            targets, 
             wgpu::ShaderStages::FRAGMENT,
             primitive, depth_stencil
         );

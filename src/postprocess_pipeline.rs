@@ -161,7 +161,7 @@ impl PostprocessMaterial {
         name: &str,
         device: &wgpu::Device,
         vertex_layouts: &Vec<wgpu::VertexBufferLayout>,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         uniform_bind_0_visibility: wgpu::ShaderStages,
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
@@ -170,15 +170,14 @@ impl PostprocessMaterial {
         let mut calcolator = PipelineKeyCalcolator::new();
 
         gen_pipeline_key(&mut calcolator, &primitive, &depth_stencil, 0, 1);
-        gen_fragment_state_key(&mut calcolator, &target);
+        gen_fragment_state_key(&mut calcolator, &targets[0]);
 
         let key = calcolator.key;
 
         match self.pipelines.contains_key(&key) {
             true => {},
             false => {
-                let targets = [target];
-                let fs_state = Renderer::fs_state(&self.shader, &targets);
+                let fs_state = Renderer::fs_state(&self.shader, targets);
                 let vs_state = Renderer::vs_state(&self.shader, vertex_layouts);
                 let pipeline = PostprocessPipeline::new(
                     key,
@@ -224,6 +223,12 @@ pub struct PostProcessMaterialMgr {
 }
 
 impl PostProcessMaterialMgr {
+    pub fn default() -> Self {
+        Self {
+            materials: XHashMap::default(),
+        }
+    }
+
     pub fn new() -> Self {
         Self {
             materials: XHashMap::default(),
@@ -235,7 +240,7 @@ impl PostProcessMaterialMgr {
         device: &wgpu::Device,
         geometry: &Geometry,
         shader_key: EPostprocessShader,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
@@ -248,16 +253,16 @@ impl PostProcessMaterialMgr {
         let material = self.materials.get_mut(&(shader_key as u8)).unwrap();
 
         match shader_key {
-            EPostprocessShader::CopyIntensity => CopyIntensityRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::ColorEffect => ColorEffectRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::BlurDual => BlurDualRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::BlurBokeh => BlurBokehRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::BlurRadial => BlurRadialRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::BlurDirect => BlurDirectRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::HorizonGlitch => HorizonGlitchRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::FilterBrightness => FilterBrightnessRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::Sobel => FilterSobelRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
-            EPostprocessShader::RadialWave => RadialWaveRenderer::check_pipeline(device, material, geometry, target, primitive, depth_stencil),
+            EPostprocessShader::CopyIntensity => CopyIntensityRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::ColorEffect => ColorEffectRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::BlurDual => BlurDualRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::BlurBokeh => BlurBokehRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::BlurRadial => BlurRadialRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::BlurDirect => BlurDirectRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::HorizonGlitch => HorizonGlitchRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::FilterBrightness => FilterBrightnessRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::Sobel => FilterSobelRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
+            EPostprocessShader::RadialWave => RadialWaveRenderer::check_pipeline(device, material, geometry, targets, primitive, depth_stencil),
         };
     }
 

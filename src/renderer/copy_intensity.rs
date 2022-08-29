@@ -14,7 +14,7 @@ impl CopyIntensityRenderer {
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
         geometry: &Geometry,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {
@@ -23,7 +23,7 @@ impl CopyIntensityRenderer {
         material.check_pipeline(
             "CopyInstensity", device,
             &vertex_layouts,
-            target,
+            targets,
             Self::UNIFORM_BIND_0_VISIBILITY,
             primitive, depth_stencil
         );

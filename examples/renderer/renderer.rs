@@ -85,7 +85,7 @@ impl State {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 // Most images are stored using sRGB so we need to reflect that here.
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                format: wgpu::TextureFormat::Bgra8Unorm,
                 // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                 // COPY_DST means that we want to copy data to this texture
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
@@ -169,9 +169,9 @@ impl State {
         self.value_test = r;
         // self.postprocess.color_balance = Some(ColorBalance { r: r, g: 255 - r, b: 255 });
         // self.postprocess.color_filter = Some(ColorFilter { r: r, g: 0, b: 0 });
-        self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
-        // self.postprocess.hsb = Some(HSB { hue: self.value_test as i16, brightness: 1, saturate: 1 });
-        self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 4, intensity: 1.0f32, simplified_up: false });
+        // self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
+        self.postprocess.hsb = Some(HSB { hue: self.value_test as i16, brightness: 1, saturate: 1 });
+        // self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 4, intensity: 1.0f32, simplified_up: false });
         // self.postprocess.blur_direct = Some(BlurDirect { radius: 4, iteration: 10, direct_x: r as f32 / 255.0 * 2.0 - 1.0, direct_y: 1.0 });
         // self.postprocess.blur_radial = Some(BlurRadial { radius: 4, iteration: 10, center_x: 0., center_y: 0., start: 0.1, fade: 0.2  });
         // self.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 10, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
@@ -189,12 +189,12 @@ impl State {
 
         // self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-        // self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+        self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
         
         // self.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
         // self.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
-        // self.postprocess.alpha = Some(Alpha { a: 250 as f32 / 255.0 });
+        self.postprocess.alpha = Some(Alpha { a: r as f32 / 255.0 });
     }
 
     pub fn render(
@@ -259,13 +259,13 @@ impl State {
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
         };
 
-        let final_target = create_target(ouput_format, get_blend_state(EBlend::None), wgpu::ColorWrites::ALL);
+        let final_targets = [create_target(ouput_format, get_blend_state(EBlend::Combine), wgpu::ColorWrites::ALL)];
         let final_depth_and_stencil = None;
         
         self.postprocess.calc(
             16,
             &self.renderdevice, &mut self.pipelines, &mut self.geometrys,
-            final_target.clone(),
+            &final_targets,
             final_depth_and_stencil.clone(),
         );
 
@@ -283,7 +283,7 @@ impl State {
         let result = match result {
             Ok(result) => {
                 let texture = result;
-                match self.postprocess.get_final_texture_bind_group(&self.renderdevice, &self.pipelines, &texture, &final_target, &final_depth_and_stencil) {
+                match self.postprocess.get_final_texture_bind_group(&self.renderdevice, &self.pipelines, &texture, &final_targets, &final_depth_and_stencil) {
                     Some(texture_bind_group) => {
                         let mut renderpass = encoder.begin_render_pass(
                             &wgpu::RenderPassDescriptor {
@@ -308,9 +308,9 @@ impl State {
                             & self.pipelines,
                             & self.geometrys,
                             &mut renderpass,
-                            &texture,
+                            texture,
                             &texture_bind_group,
-                            &final_target,
+                            &final_targets,
                             &final_depth_and_stencil,
                             // &IDENTITY_MATRIX,
                             &[0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.],

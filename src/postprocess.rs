@@ -87,10 +87,10 @@ impl PostProcess {
         render_device: &RenderDevice,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         geometrys: &mut PostProcessGeometryManager,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
-        self.check(render_device, delta_time, geometrys, postprocess_pipelines, target, depth_stencil, true);
+        self.check(render_device, delta_time, geometrys, postprocess_pipelines, targets, depth_stencil, true);
     }
     /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
     /// * `src`
@@ -134,7 +134,7 @@ impl PostProcess {
         device: &'a RenderDevice,
         postprocess_pipelines: &'a PostProcessMaterialMgr,
         src: &'a EPostprocessTarget,
-        target: &wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: &Option<wgpu::DepthStencilState>,
     ) -> Option<wgpu::BindGroup> {
         
@@ -142,7 +142,7 @@ impl PostProcess {
 
         match self.flags.last() {
             Some(flag) => {
-                self.get_texture_bind_group(device, postprocess_pipelines, src, target, &primitive, depth_stencil, *flag)
+                self.get_texture_bind_group(device, postprocess_pipelines, src, &targets[0], &primitive, depth_stencil, *flag)
             },
             None => {
                 None
@@ -222,9 +222,9 @@ impl PostProcess {
         postprocess_pipelines: &'a PostProcessMaterialMgr,
         geometrys: &'a PostProcessGeometryManager,
         renderpass: & mut wgpu::RenderPass<'a>,
-        texture: &'a EPostprocessTarget,
+        texture: EPostprocessTarget<'a>,
         texture_bind_group: &'a wgpu::BindGroup,
-        target: &wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: &[f32],
         depth: f32,
@@ -237,7 +237,7 @@ impl PostProcess {
         if matrix.len() == 16 {
             let texture_scale_offset = TextureScaleOffset::from_rect(texture.use_x(), texture.use_y(), texture.use_w(), texture.use_h(), texture.width(), texture.height());
             self._draw_final(
-                device, queue, renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, texture_bind_group, target, depth_stencil, matrix, SimpleRenderExtendsData { alpha, depth }
+                device, queue, renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, texture_bind_group, targets, depth_stencil, matrix, SimpleRenderExtendsData { alpha, depth }
             )
         } else {
             Err(EPostprocessError::ParamMatrixSizeError)
@@ -266,14 +266,14 @@ impl PostProcess {
             let mut src_info = (src.use_w(), src.use_h(), 0, format);
             src_info.2 = temp_targets.record_from_other(src);
 
-            let target = create_default_target();
+            let targets = [create_default_target()];
             let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
             let depth_and_stencil = None;
 
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
 
-                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src_info, dst_size, &target, &primitive, &depth_and_stencil, matrix, flag, &mut temp_targets);
+                let temp_result = self._draw_single_front(device, queue, encoder, postprocess_pipelines, geometrys, src_info, dst_size, &targets, &primitive, &depth_and_stencil, matrix, flag, &mut temp_targets);
 
                 temp_targets.release(src_info.2);
 
@@ -304,7 +304,7 @@ impl PostProcess {
         geometrys: &'a PostProcessGeometryManager,
         texture_scale_offset: &TextureScaleOffset,
         texture_bind_group: &'a wgpu::BindGroup,
-        target: &wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
         extends: SimpleRenderExtendsData,
@@ -312,7 +312,7 @@ impl PostProcess {
         let count = self.flags.len();
         if count > 0 {
             let flag = *self.flags.get(count - 1).unwrap();
-            self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, target, depth_stencil, matrix, extends, flag);
+            self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, &targets[0], depth_stencil, matrix, extends, flag);
             Ok(true)
         } else {
             Ok(false)
@@ -328,7 +328,7 @@ impl PostProcess {
         geometrys: &PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32),
-        target: &wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: &wgpu::PrimitiveState,
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
@@ -339,7 +339,7 @@ impl PostProcess {
         let (width, height) = dst;
         let dst_id = temp_targets.create_share_target(Some(src_id), width, height, format);
 
-        let result = self._draw_single(device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), target, primitive, depth_stencil, matrix, flag, temp_targets, SimpleRenderExtendsData::default());
+        let result = self._draw_single(device, queue, encoder, postprocess_pipelines, geometrys, src, (width, height, dst_id, format), targets, primitive, depth_stencil, matrix, flag, temp_targets, SimpleRenderExtendsData::default());
 
         match result {
             Ok(_) => Ok(dst_id),
@@ -356,7 +356,7 @@ impl PostProcess {
         geometrys: &'a PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32, usize, wgpu::TextureFormat),
-        target: &wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: &wgpu::PrimitiveState,
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
@@ -392,7 +392,7 @@ impl PostProcess {
                 let receiver = temp_targets.get_target(dst_id).unwrap();
 
                 let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(src.use_x(), src.use_y(), src.use_w(), src.use_h(), src.width(), src.height());
-                let texture_bind_group = self.get_texture_bind_group(device, postprocess_pipelines, src, target, primitive, depth_stencil, flag).unwrap();
+                let texture_bind_group = self.get_texture_bind_group(device, postprocess_pipelines, src, &targets[0], primitive, depth_stencil, flag).unwrap();
                 let mut renderpass = encoder.begin_render_pass(
                     &wgpu::RenderPassDescriptor {
                         label: None,
@@ -417,7 +417,7 @@ impl PostProcess {
                     0.,
                     1.
                 );
-                self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, target, depth_stencil, matrix, extends, flag);
+                self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, &targets[0], depth_stencil, matrix, extends, flag);
             },
         }
         Ok(())
@@ -477,7 +477,7 @@ impl PostProcess {
         delta_time: u64,
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
         final_step_by_draw_final: bool,
     ) {
@@ -505,53 +505,53 @@ impl PostProcess {
         
         let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
 
-        self.renders.check_copy_intensity(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+        self.renders.check_copy_intensity(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
 
         let mut final_is_multi_render_steps = false;
 
         if color_effect {
-            self.renders.check_color_effect(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_color_effect(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::ColorEffect);
             final_is_multi_render_steps = false;
         }
         if blur_dual {
-            self.renders.check_blur_dual(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_blur_dual(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::BlurDual);
             final_is_multi_render_steps = true;
         }
         if blur_direct {
-            self.renders.check_blur_direct(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_blur_direct(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::BlurDirect);
             final_is_multi_render_steps = false;
         }
         if blur_radial {
-            self.renders.check_blur_radial(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_blur_radial(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::BlurRadial);
             final_is_multi_render_steps = false;
         }
         if blur_bokeh {
-            self.renders.check_blur_bokeh(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_blur_bokeh(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::BlurBokeh);
             final_is_multi_render_steps = false;
         }
         if bloom_dual {
-            self.renders.check_bloom_dual(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_bloom_dual(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::BloomDual);
             final_is_multi_render_steps = true;
         }
         if radial_wave {
-            self.renders.check_radial_wave(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_radial_wave(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::RadialWave);
             final_is_multi_render_steps = false;
         }
         if horizon_glitch {
-            self.renders.check_horizon_glitch(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_horizon_glitch(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.horizon_glitch.as_mut().unwrap().update(delta_time);
             self.flags.push(EPostprocessRenderType::HorizonGlitch);
             final_is_multi_render_steps = true;
         }
         if filter_sobel {
-            self.renders.check_sobel(device, geometrys, postprocess_pipelines, primitive.clone(), target.clone(), depth_stencil.clone());
+            self.renders.check_sobel(device, geometrys, postprocess_pipelines, primitive.clone(), targets, depth_stencil.clone());
             self.flags.push(EPostprocessRenderType::FilterSobel);
             final_is_multi_render_steps = false;
         }

@@ -20,7 +20,7 @@ impl BlurDualRenderer {
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
         geometry: & Geometry,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {
@@ -29,7 +29,7 @@ impl BlurDualRenderer {
         material.check_pipeline(
             "BlurDual", device,
             &vertex_layouts,
-            target,
+            targets,
             Self::UNIFORM_BIND_0_VISIBILITY,
             primitive, depth_stencil
         );

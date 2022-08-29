@@ -6,6 +6,13 @@ pub struct PostProcessGeometryManager {
 }
 
 impl PostProcessGeometryManager {
+    pub fn default() -> Self {
+        Self {
+            geometry: None,
+            glitch_geometry: None,
+        }
+    }
+
     pub fn new() -> Self {
         Self {
             geometry: None,

@@ -14,7 +14,7 @@ impl BlurDirectRenderer {
         device: &wgpu::Device,
         material: &'a mut PostprocessMaterial,
         geometry: & Geometry,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {
@@ -23,7 +23,7 @@ impl BlurDirectRenderer {
         material.check_pipeline(
             "BlurDirect", device,
             &vertex_layouts,
-            target,
+            targets,
             BlurDirectRenderer::UNIFORM_BIND_0_VISIBILITY,
             primitive, depth_stencil
         );

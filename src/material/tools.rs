@@ -48,6 +48,21 @@ pub struct UniformBufferInfo {
     pub uniform_size: u64,
 }
 
+impl UniformBufferInfo {
+    pub fn calc(
+        device: &wgpu::Device,
+        used_size: u64,
+    ) -> u64 {
+        let limit = device.limits().min_uniform_buffer_offset_alignment as u64;
+        let t = used_size / limit;
+        if used_size - t * limit > 0 {
+            limit * (t + 1)
+        } else {
+            limit * t
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SimpleRenderExtendsData {
     pub alpha: f32,

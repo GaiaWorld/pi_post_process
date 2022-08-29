@@ -24,6 +24,6 @@ impl HSB {
     pub fn is_enabled(
         &self
     ) -> bool {
-        self.hue != 0 || self.saturate != 0 || self.brightness != 0
+        !(self.hue == 0 && self.saturate == 0 && self.brightness == 0)
     }
 }

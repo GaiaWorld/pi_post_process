@@ -65,7 +65,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.copy_intensity.is_none() {
@@ -73,8 +73,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::CopyIntensity;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.copy_intensity = Some(CopyIntensityRenderer{ copy: renderer::get_renderer(device, shader_key) });
             self.final_copy_renderer = Some(CopyIntensityRenderer{ copy: renderer::get_renderer(device, shader_key) });
@@ -87,7 +87,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.color_effect.is_none() {
@@ -95,8 +95,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::ColorEffect;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.color_effect = Some(ColorEffectRenderer{ effect: renderer::get_renderer(device, shader_key) });
         }
@@ -108,7 +108,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.blur_bokeh.is_none() {
@@ -116,8 +116,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::BlurBokeh;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.blur_bokeh = Some(BlurBokehRenderer{ bokeh: renderer::get_renderer(device, shader_key) });
         }
@@ -130,7 +130,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.blur_direct.is_none() {
@@ -138,8 +138,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::BlurDirect;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.blur_direct = Some(BlurDirectRenderer{ direct: renderer::get_renderer(device, shader_key) });
         }
@@ -152,7 +152,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.blur_dual.is_none() {
@@ -160,8 +160,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::BlurDual;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.blur_dual = Some(BlurDualRenderer{ down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) });
         }
@@ -173,7 +173,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.blur_radial.is_none() {
@@ -181,8 +181,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::BlurRadial;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.blur_radial = Some(BlurRadialRenderer{ radial: renderer::get_renderer(device, shader_key) });
         }
@@ -194,7 +194,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.radial_wave.is_none() {
@@ -202,8 +202,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::RadialWave;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.radial_wave = Some(RadialWaveRenderer{ wave: renderer::get_renderer(device, shader_key) });
         }
@@ -215,7 +215,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.bloom_dual.is_none() {
@@ -223,21 +223,21 @@ impl PostProcessRenderer {
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
             let shader_key = EPostprocessShader::FilterBrightness;
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
 
             let filter_brightness = FilterBrightnessRenderer { filter: renderer::get_renderer(device, shader_key) };
             
             let shader_key = EPostprocessShader::BlurDual;
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
 
             let target_temp = create_target(wgpu::TextureFormat::Rgba8UnormSrgb, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target_temp.clone(), primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[target_temp.clone()], primitive, None);
 
             let dual = BlurDualRenderer{ down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) };
 
             let shader_key = EPostprocessShader::CopyIntensity;
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target_temp.clone(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[target_temp.clone()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             let copy = CopyIntensityRenderer{ copy: renderer::get_renderer(device, shader_key) };
             let copy_2 = CopyIntensityRenderer{ copy: renderer::get_renderer(device, shader_key) };
@@ -252,7 +252,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.filter_sobel.is_none() {
@@ -260,8 +260,8 @@ impl PostProcessRenderer {
             let shader_key = EPostprocessShader::Sobel;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
 
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target, primitive, depth_stencil);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
             self.filter_sobel = Some(FilterSobelRenderer{ sobel: renderer::get_renderer(device, shader_key) });
                 
@@ -274,7 +274,7 @@ impl PostProcessRenderer {
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         primitive: wgpu::PrimitiveState,
-        target: wgpu::ColorTargetState,
+        targets: &[wgpu::ColorTargetState],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         if self.horizon_glitch.is_none() {
@@ -285,15 +285,15 @@ impl PostProcessRenderer {
 
             let shader_key = EPostprocessShader::CopyIntensity;
             let vertex_buffer_key = EVertexBufferLayout::Position2D;
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, create_default_target(), primitive, None);
-            postprocess_pipelines.check_pipeline(device, geometry, shader_key, target.clone(), primitive.clone(), depth_stencil.clone());
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
+            postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive.clone(), depth_stencil.clone());
 
             let copy = CopyIntensityRenderer { copy: renderer::get_renderer(device, shader_key) };
             
             let shader_key = EPostprocessShader::HorizonGlitch;
             let vertex_buffer_key = EVertexBufferLayout::Position2DGlitchInstance;
-            postprocess_pipelines.check_pipeline(device, glitch_geometry, shader_key, create_default_target(), primitive.clone(), None);
-            postprocess_pipelines.check_pipeline(device, glitch_geometry, shader_key, target.clone(), primitive.clone(), depth_stencil.clone());
+            postprocess_pipelines.check_pipeline(device, glitch_geometry, shader_key, &[create_default_target()], primitive.clone(), None);
+            postprocess_pipelines.check_pipeline(device, glitch_geometry, shader_key, targets, primitive.clone(), depth_stencil.clone());
 
             let glitch = renderer::get_renderer(device, shader_key);
 
