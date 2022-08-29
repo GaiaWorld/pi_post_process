@@ -222,13 +222,16 @@ pub struct PostProcessMaterialMgr {
     materials: XHashMap<u8, PostprocessMaterial>,
 }
 
-impl PostProcessMaterialMgr {
-    pub fn default() -> Self {
+impl Default for PostProcessMaterialMgr {
+    fn default() -> Self {
         Self {
             materials: XHashMap::default(),
         }
     }
 
+}
+
+impl PostProcessMaterialMgr {
     pub fn new() -> Self {
         Self {
             materials: XHashMap::default(),

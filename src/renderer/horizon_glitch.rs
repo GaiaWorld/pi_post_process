@@ -35,14 +35,17 @@ impl HorizonGlitchRenderer {
     pub fn get_renderer(
         device: &wgpu::Device,
     ) -> Renderer {
+        let o1 = UniformBufferInfo::calc(device, VERTEX_MATERIX_SIZE);
+        let o2 = UniformBufferInfo::calc(device, UNIFORM_PARAM_SIZE);
+        let o3 = UniformBufferInfo::calc(device, DIFFUSE_MATERIX_SIZE);
         let ubo_info: UniformBufferInfo = UniformBufferInfo {
             offset_vertex_matrix: 0,
             size_vertex_matrix: VERTEX_MATERIX_SIZE,
-            offset_param: device.limits().min_uniform_buffer_offset_alignment as u64,
+            offset_param: 0 + o1,
             size_param: UNIFORM_PARAM_SIZE,
-            offset_diffuse_matrix: device.limits().min_uniform_buffer_offset_alignment as u64 * 2,
+            offset_diffuse_matrix: 0 + o1 + o2,
             size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
-            uniform_size: device.limits().min_uniform_buffer_offset_alignment as u64 * 3,
+            uniform_size: 0 + o1 + o2 + o3,
         };
     
         let uniform_bind_group_layout = PostprocessPipeline::uniform_bind_group_layout(

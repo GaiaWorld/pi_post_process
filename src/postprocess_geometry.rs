@@ -5,14 +5,17 @@ pub struct PostProcessGeometryManager {
     glitch_geometry: Option<Geometry>,
 }
 
-impl PostProcessGeometryManager {
-    pub fn default() -> Self {
+impl Default for PostProcessGeometryManager {
+    fn default() -> Self {
         Self {
             geometry: None,
             glitch_geometry: None,
         }
     }
 
+}
+
+impl PostProcessGeometryManager {
     pub fn new() -> Self {
         Self {
             geometry: None,

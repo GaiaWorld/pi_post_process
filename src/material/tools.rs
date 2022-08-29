@@ -38,6 +38,7 @@ impl TextureScaleOffset {
     }
 }
 
+#[derive(Debug)]
 pub struct UniformBufferInfo {
     pub offset_vertex_matrix: u64,
     pub size_vertex_matrix: u64,

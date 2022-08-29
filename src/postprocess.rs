@@ -261,7 +261,7 @@ impl PostProcess {
         if count <= 1 {
             Ok(src)
         } else {
-            let format = src.format();
+            let format = wgpu::TextureFormat::Rgba8UnormSrgb;
             let mut temp_targets: TemporaryRenderTargets = TemporaryRenderTargets::new(atlas_allocator);
             let mut src_info = (src.use_w(), src.use_h(), 0, format);
             src_info.2 = temp_targets.record_from_other(src);
