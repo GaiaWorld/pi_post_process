@@ -91,6 +91,7 @@ impl PostProcess {
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         self.check(render_device, delta_time, geometrys, postprocess_pipelines, targets, depth_stencil, true);
+        // println!("{:?}", self.flags);
     }
     /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
     /// * `src`
@@ -192,7 +193,8 @@ impl PostProcess {
             }
         };
         match pipeline {
-            Some(pipeline) => Some(get_texture_binding_group(&pipeline.texture_bind_group_layout, device, src.view())),
+            Some(pipeline) => Some(
+                get_texture_binding_group(&pipeline.texture_bind_group_layout, device, src.view())),
             None => None,
         }
     }
@@ -369,14 +371,14 @@ impl PostProcess {
         match flag {
             EPostprocessRenderType::BlurDual => {
                 let geometry = geometrys.get_geometry();
-                let blur_dual_result = blur_dual_render(self.blur_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_dual.as_ref().unwrap(), geometry,src, dst, matrix, extends, temp_targets);
+                let blur_dual_result = blur_dual_render(self.blur_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.blur_dual.as_ref().unwrap(), geometry,src, dst, &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), temp_targets);
                 if let Err(e) = blur_dual_result {
                     return Err(e);
                 };
             },
             EPostprocessRenderType::BloomDual => {
                 let geometry = geometrys.get_geometry();
-                let bloom_dual_result = bloom_dual_render(self.bloom_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines,  self.renders.bloom_dual.as_ref().unwrap(), geometry, src, dst, matrix, extends, temp_targets);
+                let bloom_dual_result = bloom_dual_render(self.bloom_dual.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines,  self.renders.bloom_dual.as_ref().unwrap(), geometry, src, dst, &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), temp_targets);
                 if let Err(e) = bloom_dual_result {
                     return Err(e);
                 };
@@ -385,7 +387,7 @@ impl PostProcess {
                 let geometry = geometrys.get_geometry();
                 let src = temp_targets.get_target(src_id).unwrap();
                 let dst = temp_targets.get_target(dst_id).unwrap();
-                horizon_glitch_render(self.horizon_glitch.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.horizon_glitch.as_ref().unwrap(), geometry, geometrys.get_glitch_geometry(), src, dst, matrix, extends);
+                horizon_glitch_render(self.horizon_glitch.as_ref().unwrap(), device, queue, encoder, postprocess_pipelines, self.renders.horizon_glitch.as_ref().unwrap(), geometry, geometrys.get_glitch_geometry(), src, dst, &IDENTITY_MATRIX, SimpleRenderExtendsData::default());
             },
             _ => {
                 let src = temp_targets.get_target(src_id).unwrap();

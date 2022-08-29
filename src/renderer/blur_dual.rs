@@ -88,7 +88,7 @@ pub fn render_down(
     let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());
     let mut renderpass = encoder.begin_render_pass(
         &wgpu::RenderPassDescriptor {
-            label: Some("ColorEffect"),
+            label: Some("BlurDual"),
             color_attachments: &[
                 wgpu::RenderPassColorAttachment {
                     view: receiver.view(),
@@ -147,7 +147,7 @@ pub fn render_up(
 
     let mut renderpass = encoder.begin_render_pass(
         &wgpu::RenderPassDescriptor {
-            label: Some("ColorEffect"),
+            label: Some("BlurDual"),
             color_attachments: &[
                 wgpu::RenderPassColorAttachment {
                     view: receiver.view(),
@@ -277,6 +277,7 @@ pub fn blur_dual_render_2(
     let renderer_down_first = &renderer.down_first;
     let renderer_down = &renderer.down;
     let renderer_up = &renderer.up;
+    let renderer_up_final = &renderer.up_final;
 
     from_w = start_resource.use_w();
     from_h = start_resource.use_h();
@@ -286,12 +287,16 @@ pub fn blur_dual_render_2(
     queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
 
+    let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
+    queue.write_buffer(&renderer_up_final.uniform_buffer, renderer_up_final.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&data));
+
     // queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
     // queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
 
     update_uniform_down(renderer_down_first, queue, &dual_blur, (from_w, from_h));
     update_uniform_down(renderer_down, queue, &dual_blur, (from_w, from_h));
     update_uniform_up(renderer_up, queue, &dual_blur, (from_w, from_h));
+    update_uniform_up(renderer_up_final, queue, &dual_blur, (from_w, from_h));
 
     src_id = start_id;
     for i in 0..realiteration {
@@ -326,20 +331,14 @@ pub fn blur_dual_render_2(
 
                 let src = temp_targets.get_target(src_id).unwrap();
 
-                let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
-                queue.write_buffer(&renderer.up_final.uniform_buffer, renderer.up_final.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
-
-                // queue.write_buffer(&renderer.up_final.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
-
-                update_uniform_up(&renderer.up_final, queue, &dual_blur, (src.use_w(), src.use_h()));
                 render_up(
                     pipeline,
-                    renderer_up, 
+                    renderer_up_final, 
                     renderdevice.wgpu_device(),
                     &queue,
                     encoder,
                     geometry,
-                    temp_targets.get_target(src_id).unwrap(),
+                    src,
                     final_receiver
                 );
             }
@@ -365,17 +364,14 @@ pub fn blur_dual_render_2(
             );
         }
     
-        let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(target, &primitive, depth_stencil);
+        let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(target, &primitive, &None);
 
         src_id = *temp_rt_ids.get(0).unwrap();
         let src = temp_targets.get_target(src_id).unwrap();
 
-        let mut data = matrix.to_vec(); data.push(extends.depth); data.push(extends.alpha); 
-        queue.write_buffer(&renderer.up_final.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(matrix));
-        update_uniform_up(&renderer.up_final, queue, &dual_blur, (src.use_w(), src.use_h()));
         render_up(
             pipeline,
-            renderer_up, 
+            renderer_up_final, 
             renderdevice.wgpu_device(),
             &queue,
             encoder,

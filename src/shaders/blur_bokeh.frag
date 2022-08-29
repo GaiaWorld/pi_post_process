@@ -36,8 +36,11 @@ vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float 
 
     vec2 tempuv = uv;
 
-    for (int j = 0; j < 10; j++)
+    for (int j = 0; j < 32; j++)
     {
+        if (j == iteration) {
+            break;
+        }
         r += 1.0 / r;
         angle = GLODEN_ROT * angle;
 

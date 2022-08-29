@@ -52,7 +52,10 @@ vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff
     // }
     // count = min(16.0, time);
     
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 32; i++) {
+        if (i == iteration) {
+            break;
+        }
         count += 1.0;
         c += texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + i * diff);
     }

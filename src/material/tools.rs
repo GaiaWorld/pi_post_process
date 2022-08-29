@@ -1,7 +1,7 @@
 
 use crate::{geometry::{Geometry, EGeometryBuffer}, temprory_render_target::EPostprocessTarget};
 
-use super::{shader::Shader};
+use super::{shader::Shader, texture_sampler::{clamp, mirror}};
 
 pub const SIMPLE_RENDER_EXTEND_FLOAT_COUNT: u16 = 2;
 pub const VERTEX_MATERIX_SIZE: u64 = (16 + (SIMPLE_RENDER_EXTEND_FLOAT_COUNT / 4 + 1) * 4) as u64 * 4;
@@ -91,18 +91,32 @@ pub fn get_texture_binding_group(
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Sampler (&device.create_sampler(
-                        &wgpu::SamplerDescriptor {
-                            label: None,
-                            address_mode_u: wgpu::AddressMode::MirrorRepeat,
-                            address_mode_v: wgpu::AddressMode::MirrorRepeat,
-                            address_mode_w: wgpu::AddressMode::MirrorRepeat,
-                            mag_filter: wgpu::FilterMode::Linear,
-                            min_filter: wgpu::FilterMode::Linear,
-                            mipmap_filter: wgpu::FilterMode::Linear,
-                            ..Default::default()
-                        }
-                    )),
+                    resource: wgpu::BindingResource::Sampler (&clamp(device)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView (
+                        textureview
+                    ),
+                }
+            ],
+        }
+    )
+}
+
+pub fn get_texture_binding_group_mirror(
+    texture_bind_group_layout: &wgpu::BindGroupLayout,
+    device: &wgpu::Device,
+    textureview: &wgpu::TextureView,
+) -> wgpu::BindGroup {
+    device.create_bind_group(
+        &wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler (&mirror(device)),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,

@@ -7,6 +7,7 @@ pub mod depth_and_stencil;
 pub mod pipeline;
 pub mod vertex_state;
 pub mod fragment_state;
+pub mod texture_sampler;
 
 pub mod material;
 pub mod texture_block;
