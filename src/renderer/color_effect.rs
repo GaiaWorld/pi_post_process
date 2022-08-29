@@ -188,8 +188,8 @@ pub fn color_effect_render<'a>(
         &_vignette,
         &_color_filter,
         (
-            (hsb.is_some() && hsb.as_ref().unwrap().is_enabled()) 
-            , color_balance.is_some() && color_balance.as_ref().unwrap().is_enabled()
+            color_balance.is_some() && color_balance.as_ref().unwrap().is_enabled()
+            , (hsb.is_some() && hsb.as_ref().unwrap().is_enabled()) 
             , color_scale.is_some() && color_scale.as_ref().unwrap().is_enabled()
             , vignette.is_some() && vignette.as_ref().unwrap().is_enabled()
             , color_filter.is_some() && color_filter.as_ref().unwrap().is_enabled()

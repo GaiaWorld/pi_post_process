@@ -170,8 +170,8 @@ impl State {
         // self.postprocess.color_balance = Some(ColorBalance { r: r, g: 255 - r, b: 255 });
         // self.postprocess.color_filter = Some(ColorFilter { r: r, g: 0, b: 0 });
         // self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
-        self.postprocess.hsb = Some(HSB { hue: self.value_test as i16, brightness: 1, saturate: 1 });
-        // self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 4, intensity: 1.0f32, simplified_up: false });
+        // self.postprocess.hsb = Some(HSB { hue: 0, brightness: 0, saturate: -100 });
+        self.postprocess.blur_dual = Some(BlurDual { radius: 2, iteration: 2, intensity: 1.0f32, simplified_up: false });
         // self.postprocess.blur_direct = Some(BlurDirect { radius: 4, iteration: 10, direct_x: r as f32 / 255.0 * 2.0 - 1.0, direct_y: 1.0 });
         // self.postprocess.blur_radial = Some(BlurRadial { radius: 4, iteration: 10, center_x: 0., center_y: 0., start: 0.1, fade: 0.2  });
         // self.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 10, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
@@ -189,12 +189,12 @@ impl State {
 
         // self.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-        self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+        // self.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
         
         // self.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
         // self.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
-        self.postprocess.alpha = Some(Alpha { a: r as f32 / 255.0 });
+        // self.postprocess.alpha = Some(Alpha { a: r as f32 / 255.0 });
     }
 
     pub fn render(
@@ -233,10 +233,10 @@ impl State {
         );
 
         let src_texture = PostprocessTexture {
-            use_x: 0,
-            use_y: 0,
-            use_w: self.diffuse_size.width,
-            use_h: self.diffuse_size.height,
+            use_x: self.diffuse_size.width / 4,
+            use_y: self.diffuse_size.height / 4,
+            use_w: self.diffuse_size.width / 2,
+            use_h: self.diffuse_size.height / 2,
             width: self.diffuse_size.width,
             height: self.diffuse_size.height,
             view: &texture_view,

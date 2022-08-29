@@ -417,6 +417,12 @@ impl PostProcess {
                     0.,
                     1.
                 );
+                renderpass.set_scissor_rect(
+                    receiver.use_x(),
+                    receiver.use_y(),
+                    receiver.use_w(),
+                    receiver.use_h(),
+                );
                 self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, &targets[0], depth_stencil, matrix, extends, flag);
             },
         }

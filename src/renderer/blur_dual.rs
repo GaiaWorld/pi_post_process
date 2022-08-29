@@ -9,6 +9,7 @@ const UNIFORM_PARAM_SIZE: u64 = 4 * 4;
 const ERROR_RENDERTARGET_NUMBER_ERROR: &str = "Blur Duar Render: Render Target View Not Enough.";
 
 pub struct BlurDualRenderer {
+    pub down_first: Renderer,
     pub down: Renderer,
     pub up: Renderer,
     pub up_final: Renderer,
@@ -111,6 +112,12 @@ pub fn render_down(
         0.,
         1.
     );
+    renderpass.set_scissor_rect(
+        receiver.use_x(),
+        receiver.use_y(),
+        receiver.use_w(),
+        receiver.use_h(),
+    );
 
     effect_render(
         queue,
@@ -163,6 +170,12 @@ pub fn render_up(
         receiver.use_h() as f32,
         0.,
         1.
+    );
+    renderpass.set_scissor_rect(
+        receiver.use_x(),
+        receiver.use_y(),
+        receiver.use_w(),
+        receiver.use_h(),
     );
     
     effect_render(
@@ -261,6 +274,7 @@ pub fn blur_dual_render_2(
     let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
     let pipeline = postprocess_pipelines.get_material(EPostprocessShader::BlurDual).get_pipeline(&create_default_target(), &primitive, &None);
 
+    let renderer_down_first = &renderer.down_first;
     let renderer_down = &renderer.down;
     let renderer_up = &renderer.up;
 
@@ -268,13 +282,14 @@ pub fn blur_dual_render_2(
     from_h = start_resource.use_h();
 
     let mut data = IDENTITY_MATRIX.to_vec(); data.push(1.0); data.push(1.0); 
+    queue.write_buffer(&renderer_down_first.uniform_buffer, renderer_down_first.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
     queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
-    let mut data = IDENTITY_MATRIX.to_vec(); data.push(1.0); data.push(1.0); 
     queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice( &data ));
 
     // queue.write_buffer(&renderer_down.uniform_buffer, renderer_down.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
     // queue.write_buffer(&renderer_up.uniform_buffer, renderer_up.ubo_info.offset_vertex_matrix, bytemuck::cast_slice(&IDENTITY_MATRIX));
 
+    update_uniform_down(renderer_down_first, queue, &dual_blur, (from_w, from_h));
     update_uniform_down(renderer_down, queue, &dual_blur, (from_w, from_h));
     update_uniform_up(renderer_up, queue, &dual_blur, (from_w, from_h));
 
@@ -285,7 +300,7 @@ pub fn blur_dual_render_2(
         // println!(">{}, {}, {}", from_w, from_h, i);
         render_down(
             pipeline,
-            renderer_down,
+            if i == 0 { renderer_down_first } else { renderer_down },
             renderdevice.wgpu_device(),
             &queue,
             encoder,

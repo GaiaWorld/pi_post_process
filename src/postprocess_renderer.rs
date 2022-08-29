@@ -163,7 +163,7 @@ impl PostProcessRenderer {
             postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[create_default_target()], primitive, None);
             postprocess_pipelines.check_pipeline(device, geometry, shader_key, targets, primitive, depth_stencil);
 
-            self.blur_dual = Some(BlurDualRenderer{ down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) });
+            self.blur_dual = Some(BlurDualRenderer{ down_first: renderer::get_renderer(device, shader_key), down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) });
         }
     }
 
@@ -233,7 +233,7 @@ impl PostProcessRenderer {
             let target_temp = create_target(wgpu::TextureFormat::Rgba8UnormSrgb, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
             postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[target_temp.clone()], primitive, None);
 
-            let dual = BlurDualRenderer{ down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) };
+            let dual = BlurDualRenderer{ down_first: renderer::get_renderer(device, shader_key), down: renderer::get_renderer(device, shader_key), up: renderer::get_renderer(device, shader_key), up_final: renderer::get_renderer(device, shader_key) };
 
             let shader_key = EPostprocessShader::CopyIntensity;
             postprocess_pipelines.check_pipeline(device, geometry, shader_key, &[target_temp.clone()], primitive, None);
