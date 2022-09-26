@@ -10,9 +10,9 @@ image = "0.24"
 rand = "0.8"
 guillotiere = {version="0.6"}
 num-traits = "0.2"
-lazy_static = "*"
+lazy_static = "1.4"
 derive_deref = "1.1"
-log="*"
+log="0.4"
 smallvec={version = "1.8", features = ["serde"]}
 pi_hash="0.1"
 pi_enum_default_macro="0.1"
@@ -28,7 +28,7 @@ naga = { version = "0.8", features = [
     "wgsl-in",
     "wgsl-out",
 ] }
-pi_assets = "0.7"
+pi_assets = "0.10"
 pi_render = { git = "https://github.com/GaiaWorld/pi_render.git" }
 
 pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
