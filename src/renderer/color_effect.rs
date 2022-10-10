@@ -14,6 +14,21 @@ pub struct ColorEffectRenderer {
 
 impl ColorEffectRenderer {
     const UNIFORM_BIND_0_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
+    pub fn ubo_info(device: &wgpu::Device) -> UniformBufferInfo {
+        let o1 = UniformBufferInfo::calc(device, VERTEX_MATERIX_SIZE);
+        let o2 = UniformBufferInfo::calc(device, UNIFORM_PARAM_SIZE);
+        let o3 = UniformBufferInfo::calc(device, DIFFUSE_MATERIX_SIZE);
+        let ubo_info: UniformBufferInfo = UniformBufferInfo {
+            offset_vertex_matrix: 0,
+            size_vertex_matrix: VERTEX_MATERIX_SIZE,
+            offset_param: 0 + o1,
+            size_param: UNIFORM_PARAM_SIZE,
+            offset_diffuse_matrix: 0 + o1 + o2,
+            size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
+            uniform_size: 0 + o1 + o2 + o3,
+        };
+        ubo_info
+    }
     pub fn check_pipeline(
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
@@ -29,31 +44,21 @@ impl ColorEffectRenderer {
             &vertex_layouts,
             targets,
             Self::UNIFORM_BIND_0_VISIBILITY,
-            primitive, depth_stencil
+            primitive, depth_stencil,
+            &Self::ubo_info(device),
         );
     }
 
     pub fn get_renderer(
         device: &wgpu::Device,
     ) -> Renderer {
-        let o1 = UniformBufferInfo::calc(device, VERTEX_MATERIX_SIZE);
-        let o2 = UniformBufferInfo::calc(device, UNIFORM_PARAM_SIZE);
-        let o3 = UniformBufferInfo::calc(device, DIFFUSE_MATERIX_SIZE);
-        let ubo_info: UniformBufferInfo = UniformBufferInfo {
-            offset_vertex_matrix: 0,
-            size_vertex_matrix: VERTEX_MATERIX_SIZE,
-            offset_param: 0 + o1,
-            size_param: UNIFORM_PARAM_SIZE,
-            offset_diffuse_matrix: 0 + o1 + o2,
-            size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
-            uniform_size: 0 + o1 + o2 + o3,
-        };
-
-        println!("{:?}", ubo_info);
+        let ubo_info = Self::ubo_info(device);
+        // println!("{:?}", ubo_info);
 
         let uniform_bind_group_layout = PostprocessPipeline::uniform_bind_group_layout(
             device, 
             Self::UNIFORM_BIND_0_VISIBILITY,
+            &ubo_info,
         );
     
         let (uniform_buffer, uniform_bind_group) = get_uniform_bind_group(

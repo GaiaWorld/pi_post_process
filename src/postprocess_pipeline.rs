@@ -1,6 +1,6 @@
 use pi_hash::XHashMap;
 
-use crate::{material::{shader::{Shader, EPostprocessShader, get_shader}, blend::{EBlend, MOVE_E_BLEND}, pipeline::{gen_pipeline_key, PipelineKeyCalcolator}, fragment_state::gen_fragment_state_key}, geometry::{vertex_buffer_layout::{EVertexBufferLayout, MOVE_E_VERTEX_BUFFER_LAYOUT, get_vertex_buffer_layouts}, Geometry}, renderer::{renderer::{self, Renderer}, copy_intensity::CopyIntensityRenderer, color_effect::ColorEffectRenderer, blur_dual::BlurDualRenderer, blur_bokeh::BlurBokehRenderer, blur_radial::BlurRadialRenderer, blur_direct::BlurDirectRenderer, horizon_glitch::HorizonGlitchRenderer, filter_brightness::FilterBrightnessRenderer, filter_sobel::FilterSobelRenderer, radial_wave::RadialWaveRenderer}};
+use crate::{material::{shader::{Shader, EPostprocessShader, get_shader}, blend::{EBlend, MOVE_E_BLEND}, pipeline::{gen_pipeline_key, PipelineKeyCalcolator}, fragment_state::gen_fragment_state_key, tools::UniformBufferInfo}, geometry::{vertex_buffer_layout::{EVertexBufferLayout, MOVE_E_VERTEX_BUFFER_LAYOUT, get_vertex_buffer_layouts}, Geometry}, renderer::{renderer::{self, Renderer}, copy_intensity::CopyIntensityRenderer, color_effect::ColorEffectRenderer, blur_dual::BlurDualRenderer, blur_bokeh::BlurBokehRenderer, blur_radial::BlurRadialRenderer, blur_direct::BlurDirectRenderer, horizon_glitch::HorizonGlitchRenderer, filter_brightness::FilterBrightnessRenderer, filter_sobel::FilterSobelRenderer, radial_wave::RadialWaveRenderer}};
 
 
 pub struct PostprocessPipeline {
@@ -18,6 +18,7 @@ impl PostprocessPipeline {
     pub fn uniform_bind_group_layout(
         device: &wgpu::Device,
         uniform_bind_0_visibility: wgpu::ShaderStages,
+        ubo_info: &UniformBufferInfo,
     ) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(
             &wgpu::BindGroupLayoutDescriptor {
@@ -30,8 +31,8 @@ impl PostprocessPipeline {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            // min_binding_size: wgpu::BufferSize::new(uniform_size)
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(ubo_info.size_vertex_matrix)
+                            // min_binding_size: None,
                         },
                         count: None,
                     },
@@ -42,8 +43,8 @@ impl PostprocessPipeline {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            // min_binding_size: wgpu::BufferSize::new(uniform_size)
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(ubo_info.size_param)
+                            // min_binding_size: None,
                         },
                         count: None,
                     },
@@ -54,8 +55,8 @@ impl PostprocessPipeline {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            // min_binding_size: wgpu::BufferSize::new(uniform_size)
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(ubo_info.size_diffuse_matrix)
+                            // min_binding_size: None,
                         },
                         count: None,
                     }
@@ -118,8 +119,9 @@ impl PostprocessPipeline {
         uniform_bind_0_visibility: wgpu::ShaderStages,
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
+        ubo_info: &UniformBufferInfo,
     ) -> Self {
-        let uniform_bind_group_layout: wgpu::BindGroupLayout = PostprocessPipeline::uniform_bind_group_layout(device, uniform_bind_0_visibility);
+        let uniform_bind_group_layout: wgpu::BindGroupLayout = PostprocessPipeline::uniform_bind_group_layout(device, uniform_bind_0_visibility, ubo_info);
         let texture_bind_group_layout: wgpu::BindGroupLayout = PostprocessPipeline::texture_bind_group_layout(device);
         let pipeline_layout: wgpu::PipelineLayout = PostprocessPipeline::pipeline_layout(device, &uniform_bind_group_layout, &texture_bind_group_layout);
 
@@ -165,6 +167,7 @@ impl PostprocessMaterial {
         uniform_bind_0_visibility: wgpu::ShaderStages,
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
+        ubo_info: &UniformBufferInfo,
     ) {
 
         let mut calcolator = PipelineKeyCalcolator::new();
@@ -188,6 +191,7 @@ impl PostprocessMaterial {
                     uniform_bind_0_visibility,
                     primitive,
                     depth_stencil,
+                    ubo_info,
                 );
                 self.pipelines.insert(key, pipeline);
             },
