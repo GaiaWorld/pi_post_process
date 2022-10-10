@@ -49,7 +49,7 @@ impl Renderer {
 
     pub fn fs_state<'a>(
         shader: &'a Shader,
-        targets: &'a [wgpu::ColorTargetState],
+        targets: &'a [Option<wgpu::ColorTargetState>],
     ) -> wgpu::FragmentState<'a> {
         wgpu::FragmentState {
             module: &shader.fs_module,

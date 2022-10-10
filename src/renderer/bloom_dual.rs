@@ -58,14 +58,14 @@ pub fn bloom_dual_render(
             &wgpu::RenderPassDescriptor {
                 label: Some("FilterBrightness"),
                 color_attachments: &[
-                    wgpu::RenderPassColorAttachment {
+                    Some(wgpu::RenderPassColorAttachment {
                         view: receiver.view(),
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
                             store: true,
                         }
-                    }
+                    })
                 ],
                 depth_stencil_attachment: None,
             }
@@ -119,14 +119,14 @@ pub fn bloom_dual_render(
                 &wgpu::RenderPassDescriptor {
                     label: Some("BoomCopyIntensity"),
                     color_attachments: &[
-                        wgpu::RenderPassColorAttachment {
+                        Some(wgpu::RenderPassColorAttachment {
                             view: receiver.view(),
                             resolve_target: None,
                             ops: wgpu::Operations {
                                 load: wgpu::LoadOp::Load,
                                 store: true,
                             }
-                        }
+                        })
                     ],
                     depth_stencil_attachment: None,
                 }

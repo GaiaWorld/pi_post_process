@@ -87,7 +87,7 @@ impl PostProcess {
         render_device: &RenderDevice,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
         geometrys: &mut PostProcessGeometryManager,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
         self.check(render_device, delta_time, geometrys, postprocess_pipelines, targets, depth_stencil, true);
@@ -135,7 +135,7 @@ impl PostProcess {
         device: &'a RenderDevice,
         postprocess_pipelines: &'a PostProcessMaterialMgr,
         src: &'a EPostprocessTarget,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         depth_stencil: &Option<wgpu::DepthStencilState>,
     ) -> Option<wgpu::BindGroup> {
         
@@ -143,7 +143,7 @@ impl PostProcess {
 
         match self.flags.last() {
             Some(flag) => {
-                self.get_texture_bind_group(device, postprocess_pipelines, src, &targets[0], &primitive, depth_stencil, *flag)
+                self.get_texture_bind_group(device, postprocess_pipelines, src, targets[0].as_ref().unwrap(), &primitive, depth_stencil, *flag)
             },
             None => {
                 None
@@ -226,7 +226,7 @@ impl PostProcess {
         renderpass: & mut wgpu::RenderPass<'a>,
         texture: EPostprocessTarget<'a>,
         texture_bind_group: &'a wgpu::BindGroup,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: &[f32],
         depth: f32,
@@ -268,7 +268,7 @@ impl PostProcess {
             let mut src_info = (src.use_w(), src.use_h(), 0, format);
             src_info.2 = temp_targets.record_from_other(src);
 
-            let targets = [create_default_target()];
+            let targets = [Some(create_default_target())];
             let primitive: wgpu::PrimitiveState = wgpu::PrimitiveState::default();
             let depth_and_stencil = None;
 
@@ -306,7 +306,7 @@ impl PostProcess {
         geometrys: &'a PostProcessGeometryManager,
         texture_scale_offset: &TextureScaleOffset,
         texture_bind_group: &'a wgpu::BindGroup,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
         extends: SimpleRenderExtendsData,
@@ -314,7 +314,7 @@ impl PostProcess {
         let count = self.flags.len();
         if count > 0 {
             let flag = *self.flags.get(count - 1).unwrap();
-            self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, &targets[0], depth_stencil, matrix, extends, flag);
+            self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, targets[0].as_ref().unwrap(), depth_stencil, matrix, extends, flag);
             Ok(true)
         } else {
             Ok(false)
@@ -330,7 +330,7 @@ impl PostProcess {
         geometrys: &PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32),
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         primitive: &wgpu::PrimitiveState,
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
@@ -358,7 +358,7 @@ impl PostProcess {
         geometrys: &'a PostProcessGeometryManager,
         src: (u32, u32, usize, wgpu::TextureFormat),
         dst: (u32, u32, usize, wgpu::TextureFormat),
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         primitive: &wgpu::PrimitiveState,
         depth_stencil: &Option<wgpu::DepthStencilState>,
         matrix: & [f32],
@@ -394,19 +394,19 @@ impl PostProcess {
                 let receiver = temp_targets.get_target(dst_id).unwrap();
 
                 let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(src.use_x(), src.use_y(), src.use_w(), src.use_h(), src.width(), src.height());
-                let texture_bind_group = self.get_texture_bind_group(device, postprocess_pipelines, src, &targets[0], primitive, depth_stencil, flag).unwrap();
+                let texture_bind_group = self.get_texture_bind_group(device, postprocess_pipelines, src, targets[0].as_ref().unwrap(), primitive, depth_stencil, flag).unwrap();
                 let mut renderpass = encoder.begin_render_pass(
                     &wgpu::RenderPassDescriptor {
                         label: None,
                         color_attachments: &[
-                            wgpu::RenderPassColorAttachment {
+                            Some(wgpu::RenderPassColorAttachment {
                                 view: receiver.view(),
                                 resolve_target: None,
                                 ops: wgpu::Operations {
                                     load: wgpu::LoadOp::Load,
                                     store: true,
                                 }
-                            }
+                            })
                         ],
                         depth_stencil_attachment: None,
                     }
@@ -425,7 +425,7 @@ impl PostProcess {
                     receiver.use_w(),
                     receiver.use_h(),
                 );
-                self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, &targets[0], depth_stencil, matrix, extends, flag);
+                self._draw_single_simple(device, queue, &mut renderpass, postprocess_pipelines, geometrys, &texture_scale_offset, &texture_bind_group, targets[0].as_ref().unwrap(), depth_stencil, matrix, extends, flag);
             },
         }
         Ok(())
@@ -485,7 +485,7 @@ impl PostProcess {
         delta_time: u64,
         geometrys: &mut PostProcessGeometryManager,
         postprocess_pipelines: &mut PostProcessMaterialMgr,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         depth_stencil: Option<wgpu::DepthStencilState>,
         final_step_by_draw_final: bool,
     ) {

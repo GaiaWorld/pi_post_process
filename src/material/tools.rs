@@ -268,7 +268,7 @@ pub fn load_shader(
     fs_label: &str,
 ) -> Shader {
     let vs_module = device.create_shader_module(
-        &wgpu::ShaderModuleDescriptor {
+        wgpu::ShaderModuleDescriptor {
             label: Some(vs_label),
             source: wgpu::ShaderSource::Glsl {
                 shader: std::borrow::Cow::Borrowed(vs_text),
@@ -279,7 +279,7 @@ pub fn load_shader(
     );
 
     let fs_module = device.create_shader_module(
-        &wgpu::ShaderModuleDescriptor {
+        wgpu::ShaderModuleDescriptor {
             label: Some(fs_label),
             source: wgpu::ShaderSource::Glsl {
                 shader: std::borrow::Cow::Borrowed(fs_text),

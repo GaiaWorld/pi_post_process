@@ -14,7 +14,7 @@ impl CopyIntensityRenderer {
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
         geometry: &Geometry,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {

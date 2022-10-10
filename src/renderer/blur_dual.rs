@@ -21,7 +21,7 @@ impl BlurDualRenderer {
         device: &wgpu::Device,
         material: &mut PostprocessMaterial,
         geometry: & Geometry,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>
     ) {
@@ -90,14 +90,14 @@ pub fn render_down(
         &wgpu::RenderPassDescriptor {
             label: Some("BlurDual"),
             color_attachments: &[
-                wgpu::RenderPassColorAttachment {
+                Some(wgpu::RenderPassColorAttachment {
                     view: receiver.view(),
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: true,
                     }
-                }
+                })
             ],
             depth_stencil_attachment: None,
         }
@@ -149,14 +149,14 @@ pub fn render_up(
         &wgpu::RenderPassDescriptor {
             label: Some("BlurDual"),
             color_attachments: &[
-                wgpu::RenderPassColorAttachment {
+                Some(wgpu::RenderPassColorAttachment {
                     view: receiver.view(),
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: true,
                     }
-                }
+                })
             ],
             depth_stencil_attachment: None,
         }

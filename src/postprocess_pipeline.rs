@@ -161,7 +161,7 @@ impl PostprocessMaterial {
         name: &str,
         device: &wgpu::Device,
         vertex_layouts: &Vec<wgpu::VertexBufferLayout>,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         uniform_bind_0_visibility: wgpu::ShaderStages,
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
@@ -170,7 +170,7 @@ impl PostprocessMaterial {
         let mut calcolator = PipelineKeyCalcolator::new();
 
         gen_pipeline_key(&mut calcolator, &primitive, &depth_stencil, 0, 1);
-        gen_fragment_state_key(&mut calcolator, &targets[0]);
+        gen_fragment_state_key(&mut calcolator, targets[0].as_ref().unwrap());
 
         let key = calcolator.key;
 
@@ -243,7 +243,7 @@ impl PostProcessMaterialMgr {
         device: &wgpu::Device,
         geometry: &Geometry,
         shader_key: EPostprocessShader,
-        targets: &[wgpu::ColorTargetState],
+        targets: &[Option<wgpu::ColorTargetState>],
         primitive: wgpu::PrimitiveState,
         depth_stencil: Option<wgpu::DepthStencilState>,
     ) {
