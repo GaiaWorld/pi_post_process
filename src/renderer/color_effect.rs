@@ -20,11 +20,11 @@ impl ColorEffectRenderer {
         let o3 = UniformBufferInfo::calc(device, DIFFUSE_MATERIX_SIZE);
         let ubo_info: UniformBufferInfo = UniformBufferInfo {
             offset_vertex_matrix: 0,
-            size_vertex_matrix: VERTEX_MATERIX_SIZE,
+            size_vertex_matrix: o1,
             offset_param: 0 + o1,
-            size_param: UNIFORM_PARAM_SIZE,
+            size_param: o2,
             offset_diffuse_matrix: 0 + o1 + o2,
-            size_diffuse_matrix: DIFFUSE_MATERIX_SIZE,
+            size_diffuse_matrix: o3,
             uniform_size: 0 + o1 + o2 + o3,
         };
         ubo_info
