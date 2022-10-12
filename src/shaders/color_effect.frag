@@ -9,27 +9,34 @@ layout(set = 0, binding = 1) uniform ColorEffect {
     float flag2;
     float flag3;
     float flag4;
+    
     float flag5;
     float hsb_h;
     float hsb_s;
     float hsb_b;
+
     float color_balance_r;
     float color_balance_g;
     float color_balance_b;
     float vignette_begin;
+
     float vignette_end;
     float vignette_scale;
     float vignette_r;
     float vignette_g;
+
     float vignette_b;
     float scale_shadow_in;
     float scale_shadow_out;
     float scale_mid;
+
     float scale_highlight_in;
     float scale_highlight_out;
     float filter_r;
     float filter_g;
+
     float filter_b;
+    vec3 _wasm_0;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {

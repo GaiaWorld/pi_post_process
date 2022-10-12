@@ -8,6 +8,7 @@ layout(set = 0, binding = 0) uniform Model {
     mat4 vertexMatrix;
     float depth;
     float alpha;
+    vec2 _wasm_0;
 };
 
 void main() {

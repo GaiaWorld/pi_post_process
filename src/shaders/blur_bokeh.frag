@@ -11,8 +11,10 @@ layout(set = 0, binding = 1) uniform Param {
     vec2 center;
     float offset;
     float iteration;
+
     float start;
     float fade;
+    vec2 _wasm_0;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {

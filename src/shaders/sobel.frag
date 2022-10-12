@@ -12,6 +12,7 @@ layout(set = 0, binding = 1) uniform Param {
     vec4 bgColor;
     vec2 uDiffUV;
     float clip;
+    float _wasm_0;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {

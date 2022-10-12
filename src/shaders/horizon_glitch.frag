@@ -7,6 +7,7 @@ layout(location = 0) out vec4 gl_FragColor;
 layout(set = 0, binding = 1) uniform Param {
     float strength;
     float fade;
+    vec2 _wasm_0;
 };
 
 layout(set = 0, binding = 2) uniform TextureMatrix {
