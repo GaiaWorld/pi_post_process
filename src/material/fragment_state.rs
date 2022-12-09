@@ -102,7 +102,7 @@ fn texture_format_index(t: wgpu::TextureFormat) -> u128 {
     wgpu::TextureFormat::Depth32FloatStencil8 => 42,
     wgpu::TextureFormat::Depth24Plus => 43,
     wgpu::TextureFormat::Depth24PlusStencil8 => 44,
-    wgpu::TextureFormat::Depth24UnormStencil8 => 45,
+    wgpu::TextureFormat::Depth16Unorm => 45,
     wgpu::TextureFormat::Rgb9e5Ufloat => 46,
     wgpu::TextureFormat::Bc1RgbaUnorm => 47,
     wgpu::TextureFormat::Bc1RgbaUnormSrgb => 47,
