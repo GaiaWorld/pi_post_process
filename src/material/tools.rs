@@ -7,6 +7,7 @@ pub const SIMPLE_RENDER_EXTEND_FLOAT_COUNT: u16 = 2;
 pub const VERTEX_MATERIX_SIZE: u64 = (16 + (SIMPLE_RENDER_EXTEND_FLOAT_COUNT / 4 + 1) * 4) as u64 * 4;
 pub const DIFFUSE_MATERIX_SIZE: u64 = 4 * 4;
 
+#[derive(Debug)]
 pub struct TextureScaleOffset {
     pub use_x: u32,
     pub use_y: u32,
