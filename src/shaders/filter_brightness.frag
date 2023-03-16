@@ -3,20 +3,24 @@
 #define SHADER_NAME fragment:FilterBrightness
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
-    vec4 threshold;
-};
-
-layout(set = 0, binding = 2) uniform TextureMatrix {
+layout(set = 0, binding = 0) uniform Param {
+    mat4 vertexMatrix;
     vec4 diffuseMat;
+
+    vec4 threshold;
+
+    float depth;
+    float alpha;
+    float wasm0;
+    float wasm1;
 };
 
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 vec3 ApplyBrightnessThreshold (vec3 color, vec4 _BloomThreshold) {
     float brightness = max(color.r, max(color.g, color.b));
@@ -30,11 +34,11 @@ vec3 ApplyBrightnessThreshold (vec3 color, vec4 _BloomThreshold) {
 
 void main() {
     
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
     vec4 c = texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV);
     c.rgb = ApplyBrightnessThreshold(c.rgb, threshold);
 
     gl_FragColor = c;
-    gl_FragColor.a *= vAlpha;
+    gl_FragColor.a *= alpha;
 }

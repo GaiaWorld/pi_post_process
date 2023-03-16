@@ -31,4 +31,22 @@ impl ColorScale {
     ) -> bool {
         self.shadow_in != 0 || self.shadow_out != 0 || self.mid != 1.0 || self.highlight_in != 255 || self.highlight_out != 255
     }
+    /// F32x6
+    pub fn collect(item: Option<&Self>, list: &mut Vec<f32>) {
+        if let Some(item) = item {
+            list.push(1.);
+            list.push(item.shadow_in as f32 / 255.);
+            list.push(item.shadow_out as f32 / 255.);
+            list.push(item.mid);
+            list.push(item.highlight_in as f32 / 255.);
+            list.push(item.highlight_out as f32 / 255.);
+        } else {
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+        }
+    }
 }

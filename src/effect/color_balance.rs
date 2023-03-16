@@ -25,4 +25,18 @@ impl ColorBalance {
     ) -> bool {
         self.r != 255 || self.g != 255 || self.b != 255
     }
+    /// F32x4
+    pub fn collect(item: Option<&Self>, list: &mut Vec<f32>) {
+        if let Some(item) = item {
+            list.push(1.);
+            list.push(item.r as f32 / 255.);
+            list.push(item.g as f32 / 255.);
+            list.push(item.b as f32 / 255.);
+        } else {
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+        }
+    }
 }

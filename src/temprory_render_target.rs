@@ -1,203 +1,89 @@
 use std::num::NonZeroU32;
 
 use guillotiere::Rectangle;
-use pi_render::components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor};
+use pi_assets::asset::Handle;
+use pi_render::{components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor}, rhi::asset::TextureRes, renderer::texture::texture_view::ETextureViewUsage};
 use smallvec::SmallVec;
 
-#[derive(Debug, Clone, Copy)]
-pub struct PostprocessTexture<'a> {
+#[derive(Clone)]
+pub struct PostprocessTexture {
     pub use_x: u32,
     pub use_y: u32,
     pub use_w: u32,
     pub use_h: u32,
     pub width: u32,
     pub height: u32,
-    pub view: &'a wgpu::TextureView,
+    pub view: ETextureViewUsage,
     pub format: wgpu::TextureFormat,
 }
 
-#[derive(Clone)]
-pub struct PostprocessShareTarget {
-    pub use_x: u32,
-    pub use_y: u32,
-    pub use_w: u32,
-    pub use_h: u32,
-    pub view: ShareTargetView,
-    pub format: wgpu::TextureFormat,
-}
-
-#[derive(Clone)]
-pub enum EPostprocessTarget<'a> {
-    TextureView(PostprocessTexture<'a>),
-    ShareTarget(PostprocessShareTarget),
-}
-
-#[derive(Clone)]
-pub enum EPostprocessResult {
-    Source,
-    ShareTarget(PostprocessShareTarget),
-}
-
-impl EPostprocessResult {
+impl PostprocessTexture {
     pub fn from_share_target(
         view: ShareTargetView,
         format: wgpu::TextureFormat,
     ) -> Self {
         let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
-        Self::ShareTarget(
-            PostprocessShareTarget {
-                use_x,
-                use_y,
-                use_w,
-                use_h,
-                view,
-                format,
-            }
-        )
-    }
-}
-
-impl<'a> EPostprocessTarget<'a> {
-    pub fn from_share_target(
-        view: ShareTargetView,
-        format: wgpu::TextureFormat,
-    ) -> Self {
-        let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
-        Self::ShareTarget(
-            PostprocessShareTarget {
-                use_x,
-                use_y,
-                use_w,
-                use_h,
-                view,
-                format,
-            }
-        )
+        PostprocessTexture {
+            use_x,
+            use_y,
+            use_w,
+            use_h,
+            width: view.target().width,
+            height: view.target().height,
+            view: ETextureViewUsage::SRT(view),
+            format,
+        }
     }
     pub fn use_x(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.use_x
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.use_x
-            },
-        }
+        self.use_x
     }
     pub fn use_y(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.use_y
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.use_y
-            },
-        }
+        self.use_y
     }
     pub fn use_w(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.use_w
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.use_w
-            },
-        }
+        self.use_w
     }
     pub fn use_h(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.use_h
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.use_h
-            },
-        }
+        self.use_h
     }
     pub fn width(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.width
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.view.target().width
-            },
-        }
+        self.width
     }
     pub fn height(&self) -> u32 {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.height
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.view.target().height
-            },
-        }
+        self.height
     }
     pub fn view(&self) -> &wgpu::TextureView {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.view
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.view.target().colors[0].0.as_ref()
-            },
-        }
+        self.view.view()
     }
     pub fn format(&self) -> wgpu::TextureFormat {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                value.format
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                value.format
-            },
-        }
+        self.format.clone()
     }
     pub fn get_rect(&self) -> (u32, u32, u32, u32) {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                (value.use_x, value.use_x, value.use_w, value.use_h)
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                (value.use_x, value.use_x, value.use_w, value.use_h)
-            },
-        }
+        (self.use_x, self.use_x, self.use_w, self.use_h)
+    }
+    pub fn get_tilloff(&self) -> (f32, f32, f32, f32) {
+        (self.use_x as f32 / self.width as f32, self.use_x as f32 / self.height as f32, self.use_w as f32 / self.width as f32, self.use_h as f32 / self.height as f32)
     }
     pub fn get_full_size(&self) -> (u32, u32) {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                (value.width, value.height)
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                let fbo = value.view.target();
-                let width = fbo.width;
-                let height = fbo.height;
-                (width, height)
-            },
-        }
+        (self.width, self.height)
     }
     pub fn get_share_target(&self) -> Option<ShareTargetView> {
-        match self {
-            EPostprocessTarget::TextureView(value) => {
-                None
-            },
-            EPostprocessTarget::ShareTarget(value) => {
-                Some(value.view.clone())
-            },
+        match &self.view {
+            ETextureViewUsage::SRT(val) => Some(val.clone()),
+            _ => None,
         }
     }
 }
 
-pub struct TemporaryRenderTargets<'a> {
-    targets: Vec<Option<EPostprocessTarget<'a>>>,
+pub struct TemporaryRenderTargets {
+    targets: Vec<Option<PostprocessTexture>>,
     id_for_index: Vec<usize>,
-    atlas_allocator: &'a SafeAtlasAllocator,
+    atlas_allocator: SafeAtlasAllocator,
 }
 
-impl<'a> TemporaryRenderTargets<'a> {
-    pub fn new(atlas_allocator: &'a SafeAtlasAllocator) -> Self {
-        Self { targets: Vec::new(), id_for_index: vec![], atlas_allocator }
+impl TemporaryRenderTargets {
+    pub fn new(atlas_allocator: &SafeAtlasAllocator) -> Self {
+        Self { targets: Vec::new(), id_for_index: vec![], atlas_allocator: atlas_allocator.clone() }
     }
     pub fn get_share_target_view(
         &mut self,
@@ -222,7 +108,7 @@ impl<'a> TemporaryRenderTargets<'a> {
     }
     pub fn record_from_other(
         &mut self,
-        other: EPostprocessTarget<'a>,
+        other: PostprocessTexture,
     ) -> usize {
         let result = self.id_for_index.len();
     
@@ -266,18 +152,14 @@ impl<'a> TemporaryRenderTargets<'a> {
         self.id_for_index.push(index);
 
         let view = get_share_target_view(
-            self.atlas_allocator,
+            &self.atlas_allocator,
             width,
             height,
             format,
             &without_list
         );
 
-        let (use_x, use_y, use_w, use_h) = get_rect_info(view.rect());
-
-        let target = EPostprocessTarget::ShareTarget(
-            PostprocessShareTarget { use_x, use_y, use_w, use_h, view, format, }
-        );
+        let target = PostprocessTexture::from_share_target(view, format);
         self.targets.push(
             Some(target)
         );
@@ -358,7 +240,7 @@ impl<'a> TemporaryRenderTargets<'a> {
     pub fn get_target(
         &self,
         id: usize
-    ) -> Option<&EPostprocessTarget> {
+    ) -> Option<&PostprocessTexture> {
         let index = self.id_for_index.get(id).unwrap();
         let item = self.targets.get(*index);
 

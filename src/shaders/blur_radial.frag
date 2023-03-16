@@ -3,25 +3,28 @@
 #define SHADER_NAME fragment:DualBlur
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
+layout(set = 0, binding = 0) uniform Model {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
+
     vec2 center;
     float offset;
     float iteration;
+
     float start;
     float fade;
-    vec2 _wasm_0;
+    float depth;
+    float alpha;
+
+    // float wasm0;
+    // float wasm1;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
-
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 // vec4 loop_f(int i, texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff, float time) {
 //     vec4 c = vec4(0., 0., 0., 0.);
@@ -70,7 +73,7 @@ vec4 loop_0(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff
 
 void main() {
     
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
     vec4 c = vec4(0., 0., 0., 0.);
 
@@ -85,5 +88,5 @@ void main() {
     } else {
         gl_FragColor = loop_0(diffuseTex, sampler_diffuseTex, vMainUV, diff);
     }
-    gl_FragColor.a *= vAlpha;
+    gl_FragColor.a *= alpha;
 }

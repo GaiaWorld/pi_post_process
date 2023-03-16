@@ -86,3 +86,34 @@ impl Default for HorizonGlitch {
         Self { max_size: 0.1, min_size: 0.05, max_count: 6, min_count: 2, lifetime: 5000, probability: 0.5, strength: 0.05, fade: 0.05, life: 0, items: Vec::new(), is_up: true }
     }
 }
+impl super::TEffectForBuffer for HorizonGlitch {
+    fn buffer(&self, 
+        delta_time: u64,
+        geo_matrix: &[f32],
+        tex_matrix: (f32, f32, f32, f32),
+        alpha: f32, depth: f32,
+        device: &pi_render::rhi::device::RenderDevice,
+        src_size: (u32, u32),
+        dst_size: (u32, u32)
+    ) -> pi_render::rhi::buffer::Buffer {
+        let mut temp = vec![
+
+        ];
+        geo_matrix.iter().for_each(|v| { temp.push(*v) });
+        temp.push(tex_matrix.0);
+        temp.push(tex_matrix.1);
+        temp.push(tex_matrix.2);
+        temp.push(tex_matrix.3);
+
+        temp.push(self.strength);
+        temp.push(self.fade);
+        temp.push(depth);
+        temp.push(alpha);
+
+        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&temp),
+            usage: wgpu::BufferUsages::UNIFORM,
+        })
+    }
+}

@@ -30,3 +30,18 @@ impl Default for PostprocessFlags {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum EPostprocessRenderType {
+    ColorEffect,
+    BlurDual,
+    BlurDirect,
+    BlurRadial,
+    BlurBokeh,
+    BloomDual,
+    RadialWave,
+    HorizonGlitch,
+    FilterSobel,
+    CopyIntensity,
+    FinalCopyIntensity,
+}

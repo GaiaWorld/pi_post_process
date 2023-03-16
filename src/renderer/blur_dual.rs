@@ -1,7 +1,7 @@
 use pi_assets::{asset::GarbageEmpty, mgr::AssetMgr};
 use pi_render::{rhi::{device::RenderDevice, asset::RenderRes}, components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView}};
 
-use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  EPostprocessTarget}, postprocess_pipeline::{PostProcessMaterialMgr, PostprocessMaterial, PostprocessPipeline}, error::EPostprocessError };
+use crate::{geometry::{Geometry, vertex_buffer_layout::{EVertexBufferLayout, get_vertex_buffer_layouts}, IDENTITY_MATRIX}, material::{blend::{get_blend_state, EBlend}, shader::{Shader, EPostprocessShader}, tools::{ effect_render, get_uniform_bind_group, VERTEX_MATERIX_SIZE, DIFFUSE_MATERIX_SIZE, get_texture_binding_group, SimpleRenderExtendsData, UniformBufferInfo, TextureScaleOffset}, fragment_state::create_default_target}, effect::blur_dual::BlurDual, temprory_render_target::{get_share_target_view, get_rect_info, TemporaryRenderTargets,  PostprocessTexture}, postprocess_pipeline::{PostProcessMaterialMgr, PostprocessMaterial, PostprocessPipeline}, error::EPostprocessError };
 
 use super::{renderer::Renderer};
 
@@ -86,8 +86,8 @@ pub fn render_down(
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     image_effect_geo: &Geometry,
-    resource:  &EPostprocessTarget,
-    receiver:  &EPostprocessTarget,
+    resource:  &PostprocessTexture,
+    receiver:  &PostprocessTexture,
 ) {
     
     let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(resource.use_x(), resource.use_y(), resource.use_w(), resource.use_h(), resource.width(), resource.height());
@@ -145,8 +145,8 @@ pub fn render_up(
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     image_effect_geo: &Geometry,
-    resource:  &EPostprocessTarget,
-    receiver:  &EPostprocessTarget
+    resource:  &PostprocessTexture,
+    receiver:  &PostprocessTexture
 ) {
     let texture_scale_offset: TextureScaleOffset = TextureScaleOffset::from_rect(resource.use_x(), resource.use_y(), resource.use_w(), resource.use_h(), resource.width(), resource.height());
     let texture_bind_group = get_texture_binding_group(&pipeline.texture_bind_group_layout, device, resource.view());

@@ -1,9 +1,9 @@
-use crate::{material::{shader::{Shader, EPostprocessShader}, tools::UniformBufferInfo}, temprory_render_target::EPostprocessTarget};
+use crate::{material::{shader::{Shader, EPostprocessShader}, tools::UniformBufferInfo}, temprory_render_target::PostprocessTexture};
 
 use super::{copy_intensity::CopyIntensityRenderer, color_effect::ColorEffectRenderer, blur_dual::BlurDualRenderer, blur_bokeh::BlurBokehRenderer, blur_radial::BlurRadialRenderer, blur_direct::BlurDirectRenderer, horizon_glitch::HorizonGlitchRenderer, filter_brightness::FilterBrightnessRenderer, filter_sobel::FilterSobelRenderer, radial_wave::RadialWaveRenderer};
 
 pub enum ERenderParam<'a> {
-    Encoder((&'a mut wgpu::CommandEncoder, &'a EPostprocessTarget<'a>)),
+    Encoder((&'a mut wgpu::CommandEncoder, &'a PostprocessTexture)),
     RenderPass((&'a mut wgpu::RenderPass<'a>, wgpu::TextureFormat)),
 }
 

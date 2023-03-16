@@ -1,51 +1,50 @@
 #version 450
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform ColorEffect {
-    float flag1;
-    float flag2;
-    float flag3;
-    float flag4;
+layout(set = 0, binding = 0) uniform ColorEffect {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
     
-    float flag5;
+    float flag1;
     float hsb_h;
     float hsb_s;
     float hsb_b;
 
+    float flag2;
     float color_balance_r;
     float color_balance_g;
     float color_balance_b;
-    float vignette_begin;
 
+    float flag3;
+    float vignette_begin;
     float vignette_end;
     float vignette_scale;
+
     float vignette_r;
     float vignette_g;
-
     float vignette_b;
+    float flag4;
+
     float scale_shadow_in;
     float scale_shadow_out;
     float scale_mid;
-
     float scale_highlight_in;
+
     float scale_highlight_out;
+    float flag5;
     float filter_r;
     float filter_g;
 
     float filter_b;
-    vec3 _wasm_0;
+    float depth;
+    float alpha;
+    float wasm0;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
-
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
-
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 vec3 rgb2hsv(vec3 c)
 {
@@ -108,7 +107,7 @@ vec3 vignette(vec3 rgb, vec2 uv, float start, float end, float scale, vec3 color
 }
 
 void main() {
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
     vec4 c = texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV);
 
@@ -133,5 +132,5 @@ void main() {
     }
 
     gl_FragColor = c;
-    gl_FragColor.a *= vAlpha;
+    gl_FragColor.a *= alpha;
 }

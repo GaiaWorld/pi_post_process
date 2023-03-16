@@ -18,7 +18,6 @@ impl BloomDual {
         self.radius > 0 && self.iteration > 0 && self.intensity > 0.
     }
 }
-
 impl Default for BloomDual {
     fn default() -> Self {
         Self { radius: 1, iteration: 1, intensity: 1.0, threshold: 0., threshold_knee: 0. }

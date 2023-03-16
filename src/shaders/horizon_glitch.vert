@@ -5,13 +5,15 @@ layout(location = 1) in vec4 glitch;
 
 layout(location = 0) out vec2 postiion_cs;
 layout(location = 1) out vec4 vGlitch;
-layout(location = 2) out float vAlpha;
 
 layout(set = 0, binding = 0) uniform Model {
     mat4 vertexMatrix;
+    vec4 diffuseMat;
+
+    float strength;
+    float fade;
     float depth;
     float alpha;
-    vec2 _wasm_0;
 };
 
 void main() {
@@ -28,6 +30,4 @@ void main() {
 
     float halfSize = glitch.y / 2.;
     vGlitch = vec4(halfSize, position.y + 0.5, glitch.zw);
-
-    vAlpha = alpha;
 }

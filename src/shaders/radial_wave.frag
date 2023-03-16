@@ -3,31 +3,36 @@
 #define SHADER_NAME fragment:RadialWave
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
+layout(set = 0, binding = 0) uniform Param {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
+
     float centerx;
     float centery;
     float aspect_ratio;
     float start;
+
     float end;
     float cycle;
     float weight;
-    float _wasm_0;
+    float depth;
+
+    float alpha;
+    float wasm0;
+    float wasm1;
+    float wasm2;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
 
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 void main() {
 
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
     vec2 local = postiion_cs * 2.0 - 1.0;
     local.y *= aspect_ratio;
@@ -40,6 +45,6 @@ void main() {
     float t = (len - start) / width * cycle;
     diff = fade * weight * sin(t * 3.141592653589793);
 
-    gl_FragColor = texture(sampler2D(diffuseTex, sampler_diffuseTex), fract(vMainUV + diff * diffuseMat.xy));
-    gl_FragColor.a *= vAlpha;
+    gl_FragColor = texture(sampler2D(diffuseTex, sampler_diffuseTex), fract(vMainUV + diff * diffuseMat.zw));
+    gl_FragColor.a *= alpha;
 }

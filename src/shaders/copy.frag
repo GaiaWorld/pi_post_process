@@ -1,26 +1,30 @@
 #version 450
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
+layout(set = 0, binding = 0) uniform Param {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
+
     float intensity;
     float polygonN;
     float radius;
     float rotate;
+
     float bgColorR;
     float bgColorG;
     float bgColorB;
     float bgColorA;
+
+    float depth;
+    float alpha;
+    float wasm0;
+    float wasm1;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
-
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 #define PI 3.14159265358979323846
 #define TWO_PI 6.2448530717958647692
@@ -56,7 +60,7 @@ vec4 polygon(texture2D tex, sampler sp, vec2 uv, vec2 st, float scaling, float r
 }
 
 void main() {
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
     vec4 bgColor = vec4(bgColorR, bgColorG, bgColorB, bgColorA);
     vec4 c = mix(
         texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV),
@@ -70,7 +74,7 @@ void main() {
 
     c.rgb *= intensity;
 
-    c.a *= vAlpha;
+    c.a *= alpha;
 
     gl_FragColor = c;
 }

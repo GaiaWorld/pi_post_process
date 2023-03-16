@@ -4,23 +4,24 @@ layout(location = 0) in vec2 postiion_cs;
 layout(location = 1) in vec4 vGlitch;
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
+layout(set = 0, binding = 0) uniform Model {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
+
     float strength;
     float fade;
-    vec2 _wasm_0;
+    float depth;
+    float alpha;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
 
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 void main() {
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
-    float diff_u = (1.0 - smoothstep(0.5 - fade / vGlitch.x, 0.5, abs(vGlitch.y - 0.5))) * strength * diffuseMat.x;
+    float diff_u = (1.0 - smoothstep(0.5 - fade / vGlitch.x, 0.5, abs(vGlitch.y - 0.5))) * strength * diffuseMat.z;
     // float diff_u = strength * diffuseMat.x;
 
     vec4 src1 = texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV);

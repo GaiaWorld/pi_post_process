@@ -26,4 +26,19 @@ impl HSB {
     ) -> bool {
         !(self.hue == 0 && self.saturate == 0 && self.brightness == 0)
     }
+    ///
+    /// F32x4
+    pub fn collect(item: Option<&Self>, list: &mut Vec<f32>) {
+        if let Some(item) = item {
+            list.push(1.);
+            list.push(item.hue as f32 / 360.);
+            list.push(item.saturate as f32 / 100.);
+            list.push(item.brightness as f32 / 100.);
+        } else {
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+            list.push(0.);
+        }
+    }
 }

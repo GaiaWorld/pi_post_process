@@ -3,24 +3,28 @@
 #define SHADER_NAME fragment:Sobel
 
 layout(location = 0) in vec2 postiion_cs;
-layout(location = 1) in float vAlpha;
 
 layout(location = 0) out vec4 gl_FragColor;
 
-layout(set = 0, binding = 1) uniform Param {
+layout(set = 0, binding = 0) uniform Param {
+    mat4 vertexMatrix;
+    vec4 diffuseMat;
+
     vec4 color;
     vec4 bgColor;
+
     vec2 uDiffUV;
     float clip;
-    float _wasm_0;
+    float depth;
+
+    float alpha;
+    float wasm0;
+    float wasm1;
+    float wasm2;
 };
 
-layout(set = 0, binding = 2) uniform TextureMatrix {
-    vec4 diffuseMat;
-};
-
-layout(set = 1, binding = 0) uniform sampler sampler_diffuseTex;
-layout(set = 1, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 1) uniform texture2D diffuseTex;
+layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 const vec3 S0 = vec3(1., 2., 1.);
 const vec3 S1 = vec3(1., 0., -1.);
@@ -31,7 +35,7 @@ float rgb2gray(vec3 rgb) {
 
 void main() {
     
-    vec2 vMainUV = postiion_cs * diffuseMat.xy + diffuseMat.zw;
+    vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
     float g00 =  rgb2gray(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV + uDiffUV * vec2(-1., -1.)).rgb);
     float g01 =  rgb2gray(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV + uDiffUV * vec2(-0., -1.)).rgb);
@@ -56,5 +60,5 @@ void main() {
 
     gl_FragColor = mix(bgColor, color, step(clip, g) * g);
 
-    gl_FragColor.a *= vAlpha;
+    gl_FragColor.a *= alpha;
 }
