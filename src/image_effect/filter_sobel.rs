@@ -31,7 +31,7 @@ impl EffectFilterSobel {
         alpha: f32, depth: f32,
         source: PostprocessTexture,
         target: Option<PostprocessTexture>,
-        safeatlas: &mut SafeAtlasAllocator,
+        safeatlas: &SafeAtlasAllocator,
         target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,

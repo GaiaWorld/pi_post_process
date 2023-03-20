@@ -170,7 +170,7 @@ impl SingleImageEffectResource {
 }
 
 pub trait TImageEffect {
-    fn get_target(target: Option<PostprocessTexture>, source: &PostprocessTexture, dst_size: (u32, u32), safeatlas: &mut SafeAtlasAllocator, target_type: TargetType) -> PostprocessTexture {
+    fn get_target(target: Option<PostprocessTexture>, source: &PostprocessTexture, dst_size: (u32, u32), safeatlas: &SafeAtlasAllocator, target_type: TargetType) -> PostprocessTexture {
         let mut templist = vec![];
         let target = if let Some(target) = target {
             target

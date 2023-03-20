@@ -16,7 +16,7 @@ pub fn horizon_glitch_render(
     queue: & RenderQueue,
     vballocator: &mut VertexBufferAllocator,
     matrix: &[f32],
-    safeatlas: &mut SafeAtlasAllocator,
+    safeatlas: &SafeAtlasAllocator,
     source: PostprocessTexture,
     target: Option<PostprocessTexture>,
     draws: &mut Vec<PostProcessDraw>,

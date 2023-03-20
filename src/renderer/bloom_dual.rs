@@ -16,7 +16,7 @@ pub fn bloom_dual_render(
     encoder: &mut wgpu::CommandEncoder,
     matrix: &[f32],
     extends: SimpleRenderExtendsData,
-    safeatlas: &mut SafeAtlasAllocator,
+    safeatlas: &SafeAtlasAllocator,
     source: PostprocessTexture,
     draws: &mut Vec<PostProcessDraw>,
     resources: &SingleImageEffectResource,
