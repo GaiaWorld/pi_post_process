@@ -72,6 +72,7 @@ impl State {
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
         surface.configure(&device, &config);
 
@@ -236,7 +237,7 @@ impl State {
         // self.postprocess.color_filter = Some(ColorFilter { r: r, g: 0, b: 0 });
         // self.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
         // self.postprocess.hsb = Some(HSB { hue: 0, brightness: 0, saturate: (r as i16 - 100) as i8 });
-        // self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 2, intensity: 1.0f32, simplified_up: false });
+        self.postprocess.blur_dual = Some(BlurDual { radius: 1, iteration: 2, intensity: 1.0f32, simplified_up: false });
         // self.postprocess.blur_direct = Some(BlurDirect { radius: 4, iteration: 10, direct_x: r as f32 / 255.0 * 2.0 - 1.0, direct_y: 1.0 });
         // self.postprocess.blur_radial = Some(BlurRadial { radius: 4, iteration: 10, center_x: 0., center_y: 0., start: 0.1, fade: 0.2  });
         // self.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 8, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
