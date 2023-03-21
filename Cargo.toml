@@ -29,7 +29,7 @@ naga = { version = "0.10", features = [
     "wgsl-out",
 ] }
 pi_assets = "0.10"
-pi_render = { git = "https://github.com/GaiaWorld/pi_render.git" }
+pi_render = { git = "https://github.com/GaiaWorld/pi_render.git", branch="bevy_shader" }
 
 pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
 
