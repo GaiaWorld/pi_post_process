@@ -50,10 +50,9 @@ impl EffectCopy {
         depth_stencil: Option<DepthStencilState>,
     ) -> Option<(super::base::PostProcessDraw, PostprocessTexture)> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source);
-
             let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
+
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source, source.size_eq(&target));
 
             log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 

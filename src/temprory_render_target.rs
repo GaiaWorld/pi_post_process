@@ -72,6 +72,9 @@ impl PostprocessTexture {
             _ => None,
         }
     }
+    pub fn size_eq(&self, rhs: &Self) -> bool {
+        self.use_w == rhs.use_w && self.use_h == rhs.use_h
+    }
 }
 
 pub fn get_rect_info(rect: &Rectangle) -> (u32, u32, u32, u32) {

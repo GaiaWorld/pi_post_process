@@ -9,7 +9,7 @@ use pi_render::{
     },
     rhi::{
         bind_group_layout::BindGroupLayout, device::RenderDevice, buffer::Buffer,
-        sampler::SamplerDesc, pipeline::RenderPipeline, bind_group::BindGroup, RenderQueue
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, bind_group::BindGroup, RenderQueue
     },
     asset::{TAssetKeyU64},
     components::view::target_alloc::{SafeAtlasAllocator, TargetType}
@@ -22,7 +22,21 @@ use crate::{material::{tools::{Shader}}, temprory_render_target::PostprocessText
 pub struct ImageEffectResource {
     pub shader: Shader,
     pub sampler: Handle<SamplerRes>,
+    pub sampler_nearest: Handle<SamplerRes>,
     pub bindgroup_layout: BindGroupLayout,
+}
+impl ImageEffectResource {
+    pub const NEAREST_FILTER: SamplerDesc  = SamplerDesc {
+        address_mode_u: EAddressMode::ClampToEdge,
+        address_mode_v: EAddressMode::ClampToEdge,
+        address_mode_w: EAddressMode::ClampToEdge,
+        mag_filter: EFilterMode::Nearest,
+        min_filter: EFilterMode::Nearest,
+        mipmap_filter: EFilterMode::Nearest,
+        compare: None,
+        anisotropy_clamp: EAnisotropyClamp::None,
+        border_color: None,
+    };
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -206,8 +220,10 @@ pub trait TImageEffect {
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         source: &PostprocessTexture,
+        force_nearest_filter: bool,
     ) -> (Buffer, BindGroup) {
         let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, (source.use_w(), source.use_h()), dst_size);
+        let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
         let bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
                 label: Some(Self::KEY),
@@ -215,7 +231,7 @@ pub trait TImageEffect {
                 entries: &[
                     wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: &param_buffer, offset: 0, size: None  } )  },
                     wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(source.view())  },
-                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(&resource.sampler.0)  },
+                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(sampler)  },
                 ],
             }
         );
@@ -263,15 +279,22 @@ pub trait TImageEffect {
             }
         );
 
-        let sampler = if let Some(sampler) = samplers.get(&Self::SAMPLER_DESC) {
+        let sampler_linear = if let Some(sampler) = samplers.get(&Self::SAMPLER_DESC) {
             sampler
         } else {
             samplers.insert(Self::SAMPLER_DESC.clone(), SamplerRes::new(device, &Self::SAMPLER_DESC)).unwrap()
         };
+        
+        let sampler_nearest = if let Some(sampler) = samplers.get(&ImageEffectResource::NEAREST_FILTER) {
+            sampler
+        } else {
+            samplers.insert(ImageEffectResource::NEAREST_FILTER.clone(), SamplerRes::new(device, &&ImageEffectResource::NEAREST_FILTER)).unwrap()
+        };
 
         resources.regist(String::from(Self::KEY), ImageEffectResource {
             shader,
-            sampler,
+            sampler: sampler_linear,
+            sampler_nearest,
             bindgroup_layout,
         });
     }
