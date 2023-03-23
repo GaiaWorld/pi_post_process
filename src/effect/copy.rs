@@ -30,13 +30,13 @@ impl Default for CopyIntensity {
 }
 impl super::TEffectForBuffer for CopyIntensity {
     fn buffer(&self, 
-        delta_time: u64,
+        _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
-        src_size: (u32, u32),
-        dst_size: (u32, u32)
+        _: (u32, u32),
+        _: (u32, u32)
     ) -> pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 

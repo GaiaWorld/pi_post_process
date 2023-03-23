@@ -1,12 +1,11 @@
 [package]
 name = "pi_postprocess"
 version = "0.1.0"
-authors = ["suncy <suncy@gmail.com>"]
+authors = ["bp0002 <bp950722@outlook.com>"]
 edition = "2021"
 
 [dependencies]
 pollster = "0.2"
-image = "0.24"
 rand = "0.8"
 guillotiere = {version="0.6"}
 num-traits = "0.2"
@@ -15,8 +14,6 @@ derive_deref = "1.1"
 env_logger = "0.9"
 log="0.4"
 smallvec={version = "1.8", features = ["serde"]}
-futures = "0.3"
-fixedbitset = {version="0.4", features = ["serde"]}
 wgpu = { version = "0.14", features = ["spirv", "glsl"] }
 bytemuck = { version = "1.4", features = ["derive"] }
 naga = { version = "0.10", features = [
@@ -29,54 +26,26 @@ naga = { version = "0.10", features = [
 
 pi_hash="0.1"
 pi_enum_default_macro="0.1"
-pi_res="0.1"
 pi_assets = "0.10"
 pi_map = "0.1"
 
-pi_render = { git = "https://github.com/GaiaWorld/pi_render" }
-render_utils = { git = "https://github.com/GaiaWorld/pi_render" }
-render_derive = { git = "https://github.com/GaiaWorld/pi_render" }
-
-pi_scene_math = { git = "https://github.com/GaiaWorld/pi_scene" }
-pi_animation = { git = "https://github.com/GaiaWorld/pi_animation.git" }
-pi_curves = { git = "https://github.com/GaiaWorld/pi_curves.git" }
+pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
+pi_render = { git = "https://github.com/GaiaWorld/pi_render", branch = "bevy-shader"  }
 
 pi_share = "0.4"
-pi_ecs_macros = { git = "https://github.com/GaiaWorld/pi_ecs.git" }
-pi_ecs_utils = { git = "https://github.com/GaiaWorld/pi_ecs_utils.git" }
-pi_ecs = { git = "https://github.com/GaiaWorld/pi_ecs.git" }
 pi_atom = { version="0.2", features = ["serde"] }
-pi_hal = { git = "https://github.com/GaiaWorld/pi_hal.git" }
-
-pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
 
 [dev-dependencies]
 winit = { git = "http://ser.yinengyun.com:10082/tech/winit.git" }
 wgpu = "0.13"
+image = "0.24"
 env_logger = "0.9"
 float-ord = "0.3"
 async-trait="0.1"
 
-[patch."https://github.com/GaiaWorld/pi_ecs"]
-pi_ecs = { path = "../pi_ecs" }
-
-[patch."https://github.com/GaiaWorld/pi_hal"]
-pi_hal = { path = "../pi_hal" }
-
 [patch."https://github.com/GaiaWorld/pi_render"]
 pi_render = { path = "../pi_render" }
-render_utils = { path = "../pi_render/crates/render_utils" }
-render_derive = { path = "../pi_render/crates/render_derive" }
 
-[patch."https://github.com/GaiaWorld/pi_scene"]
-pi_scene = { path = "../pi_scene" }
-pi_scene_math = { path = "../pi_scene/crates/pi_scene_math" }
-
-[patch."https://github.com/GaiaWorld/pi_animation"]
-pi_animation = { path = "../pi_animation" }
-
-[patch."https://github.com/GaiaWorld/pi_curves"]
-pi_curves = { path = "../pi_curves" }
 
 [patch."http://ser.yinengyun.com:10082/tech/winit.git"]
 winit = { path = "../winit" }

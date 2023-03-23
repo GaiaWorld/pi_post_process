@@ -1,5 +1,5 @@
 
-use std::{num::NonZeroU32, time::SystemTime, sync::Arc, mem::size_of};
+use std::{time::SystemTime, sync::Arc, mem::size_of};
 
 use image::{GenericImageView};
 use pi_assets::{mgr::AssetMgr, asset::{GarbageEmpty, Handle}, homogeneous::HomogeneousMgr};
@@ -7,11 +7,10 @@ use pi_postprocess::{
     postprocess::{PostProcess}, 
     effect::*,
     material::{blend::{get_blend_state, EBlend}, create_target},
-    IDENTITY_MATRIX,
     temprory_render_target::{PostprocessTexture},
     image_effect::*,
 };
-use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, ShareTargetView, UnuseTexture, TargetDescriptor, TextureDescriptor, TargetType}, rhi::{device::RenderDevice, asset::{RenderRes, TextureRes, }, pipeline::RenderPipeline, buffer::Buffer, RenderQueue, }, renderer::{texture::{image_texture::KeyImageTexture, texture_view::ETextureViewUsage}, sampler::SamplerRes, vertex_buffer::VertexBufferAllocator}, asset::TAssetKeyU64};
+use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, UnuseTexture, TargetDescriptor, TextureDescriptor, TargetType}, rhi::{device::RenderDevice, asset::{RenderRes, TextureRes, }, pipeline::RenderPipeline, RenderQueue, }, renderer::{texture::{image_texture::KeyImageTexture, texture_view::ETextureViewUsage}, sampler::SamplerRes, vertex_buffer::VertexBufferAllocator}, asset::TAssetKeyU64};
 use pi_share::Share;
 use smallvec::SmallVec;
 use winit::{window::Window, event::WindowEvent};
@@ -266,7 +265,7 @@ impl State {
     pub fn render(
         &mut self,
     ) -> Result<(), wgpu::SurfaceError> {
-        let last_time = SystemTime::now();
+        // let last_time = SystemTime::now();
         let output = self.surface.get_current_texture()?;
 
         // BGRASrgb
@@ -293,7 +292,7 @@ impl State {
 
         self.clear(&mut encoder, &view);
         
-        let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
 
         let src_texture = PostprocessTexture {
             use_x: 0, // self.diffuse_size.width / 4,
@@ -327,24 +326,25 @@ impl State {
         
         self.postprocess.calc(
             16,
-            &self.renderdevice,
+            &self.renderdevice, 
+            &self.queue,
+            &mut self.vballocator,
         );
 
         let result = self.postprocess.draw_front(
             &self.renderdevice, 
-            &mut self.queue,
+            &self.queue,
             &mut encoder,
             src_texture,
             (receive_w, receive_h),
-            &mut self.vballocator,
-            &mut self.atlas,
+            & self.atlas,
             &self.resources,
             & self.pipelines,
             self.target_type.clone()
         );
 
         self.draws.clear();
-        let result = match result {
+        let _ = match result {
             Ok(result) => {
                 let matrix = [0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.];
                 // renderpass.set_viewport(dst.use_x as f32, dst.use_y as f32, dst.use_w as f32, dst.use_h as f32, 0., 1.);
@@ -353,8 +353,7 @@ impl State {
                     &mut self.queue,
                     &matrix,
                     1.,
-                    &mut self.vballocator,
-                    &mut self.atlas,
+                    &self.atlas,
                     result,
                     dst.clone(),
                     &self.resources,
@@ -390,7 +389,7 @@ impl State {
                     v.draw(None, Some(&mut renderpass))
                 });
             },
-            Err(e) => {
+            Err(_) => {
                 
             },
         };
@@ -409,7 +408,7 @@ impl State {
         encoder: &mut wgpu::CommandEncoder,
         view: &wgpu::TextureView
     ) {
-        let renderpass = encoder.begin_render_pass(
+        let _ = encoder.begin_render_pass(
             &wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[

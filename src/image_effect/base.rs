@@ -1,13 +1,23 @@
-use std::{sync::Arc, ops::Range, f32::consts::E};
+use std::{sync::Arc, };
 
 use pi_assets::{mgr::AssetMgr, asset::Handle};
-use pi_atom::Atom;
 use pi_hash::XHashMap;
-use pi_render::{renderer::{draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage, RenderIndices}, vertex_buffer::{KeyVertexBuffer, VertexBufferAllocator}, sampler::SamplerRes, pipeline::DepthStencilState, texture::texture_view::ETextureViewUsage}, rhi::{bind_group_layout::BindGroupLayout, device::RenderDevice, BufferInitDescriptor, buffer::Buffer, asset::RenderRes, texture::Sampler, sampler::SamplerDesc, pipeline::RenderPipeline, bind_group::BindGroup, RenderQueue}, asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN}, components::view::target_alloc::{SafeAtlasAllocator, TargetType}};
+use pi_render::{
+    renderer::{
+        draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::{VertexBufferAllocator},
+        sampler::SamplerRes, pipeline::DepthStencilState, texture::texture_view::ETextureViewUsage
+    },
+    rhi::{
+        bind_group_layout::BindGroupLayout, device::RenderDevice, buffer::Buffer,
+        sampler::SamplerDesc, pipeline::RenderPipeline, bind_group::BindGroup, RenderQueue
+    },
+    asset::{TAssetKeyU64},
+    components::view::target_alloc::{SafeAtlasAllocator, TargetType}
+};
 use pi_share::Share;
 use wgpu::CommandEncoder;
 
-use crate::{material::{tools::{load_shader, Shader}}, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
+use crate::{material::{tools::{Shader}}, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
 
 pub struct ImageEffectResource {
     pub shader: Shader,
@@ -103,33 +113,33 @@ impl PostProcessDraw {
 }
 
 pub struct SingleImageEffectResource {
-    pub(crate) triangle: RenderVertices,
+    // pub(crate) triangle: RenderVertices,
     pub(crate) quad: RenderVertices,
-    pub(crate) triangle_indices: RenderIndices,
-    pub(crate) quad_indices: RenderIndices,
+    // pub(crate) triangle_indices: RenderIndices,
+    // pub(crate) quad_indices: RenderIndices,
     map: XHashMap<String, Arc<ImageEffectResource>>,
 }
 impl SingleImageEffectResource {
     pub fn new(device: &RenderDevice, queue: &RenderQueue, vballocator: &mut VertexBufferAllocator) -> Self {
-        let vertices: [f32; 6] = [-0.5, -0.5, 1.5, -0.5, -0.5, 1.5];
-        let key = KeyVertexBuffer::from("ImageEffectTriangle");
-        let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices)).unwrap();
-        let triangle = RenderVertices {
-            slot: 0,
-            buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
-            buffer_range: None,
-            size_per_value: 8,
-        };
-        let indices: [u16; 4] = [0, 1, 2, 0];
-        let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
-        let triangle_indices = RenderIndices {
-            buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
-            buffer_range: None,
-            format: wgpu::IndexFormat::Uint16,
-        };
+        // let vertices: [f32; 6] = [-0.5, -0.5, 1.5, -0.5, -0.5, 1.5];
+        // let key = KeyVertexBuffer::from("ImageEffectTriangle");
+        // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices)).unwrap();
+        // let triangle = RenderVertices {
+        //     slot: 0,
+        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer_range: None,
+        //     size_per_value: 8,
+        // };
+        // let indices: [u16; 4] = [0, 1, 2, 0];
+        // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
+        // let triangle_indices = RenderIndices {
+        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer_range: None,
+        //     format: wgpu::IndexFormat::Uint16,
+        // };
 
         let vertices: [f32; 12] = [-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5];
-        let key = KeyVertexBuffer::from("ImageEffectQuad");
+        // let key = KeyVertexBuffer::from("ImageEffectQuad");
         let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices)).unwrap();
         let quad = RenderVertices {
             slot: 0,
@@ -137,19 +147,19 @@ impl SingleImageEffectResource {
             buffer_range: None,
             size_per_value: 8,
         };
-        let indices: [u16; 6] = [0, 1, 2, 3, 4, 5];
-        let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
-        let quad_indices = RenderIndices {
-            buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
-            buffer_range: None,
-            format: wgpu::IndexFormat::Uint16,
-        };
+        // let indices: [u16; 6] = [0, 1, 2, 3, 4, 5];
+        // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
+        // let quad_indices = RenderIndices {
+        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer_range: None,
+        //     format: wgpu::IndexFormat::Uint16,
+        // };
 
         Self {
-            triangle,
+            // triangle,
             quad,
-            triangle_indices,
-            quad_indices,
+            // triangle_indices,
+            // quad_indices,
             map: XHashMap::default(),
         }
     }

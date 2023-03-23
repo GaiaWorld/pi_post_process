@@ -1,33 +1,44 @@
-use std::{sync::Arc, num::NonZeroU64, ops::Range};
+use std::{sync::Arc, ops::Range};
 
-use pi_assets::{asset::Handle, mgr::AssetMgr};
+use pi_assets::{mgr::AssetMgr};
 use pi_map::vecmap::VecMap;
-use pi_render::{rhi::{asset::RenderRes, sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, device::RenderDevice, pipeline::RenderPipeline, BufferInitDescriptor, buffer::Buffer, bind_group::{self, BindGroup}, RenderQueue}, renderer::{texture::texture_view::ETextureViewUsage, bind_group::BindGroupLayout, sampler::SamplerRes, vertices::RenderVertices, draw_obj::{DrawObj, DrawBindGroups, DrawBindGroup}, pipeline::DepthStencilState}, components::view::target_alloc::{SafeAtlasAllocator, TargetDescriptor, TargetType}, asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN}};
+
+use pi_render::{
+    renderer::{
+        draw_obj::{DrawObj, DrawBindGroups, DrawBindGroup},
+        pipeline::DepthStencilState
+    },
+    rhi::{
+        device::RenderDevice, 
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes
+    },
+    asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN},
+    components::view::target_alloc::{SafeAtlasAllocator, TargetType}
+};
 use pi_share::Share;
 
-use crate::{temprory_render_target::PostprocessTexture, effect::{blur_bokeh::BlurBokeh, TEffectForBuffer}, material::tools::load_shader};
+use crate::{temprory_render_target::PostprocessTexture, effect::{blur_bokeh::BlurBokeh}, material::tools::load_shader};
 
-use super::base::{TImageEffect, ImageEffectResource, PostProcessDraw, KeyPostprocessPipeline};
+use super::base::{TImageEffect, KeyPostprocessPipeline};
 
 
 pub struct EffectBlurBokeh {
-    resource: Arc<ImageEffectResource>,
-    bind_group: BindGroup,
-    param_buffer: Buffer,
-    temp_tex: ETextureViewUsage,
-    vertex: RenderVertices,
-    viewport: (u32, u32, u32, u32),
+    // resource: Arc<ImageEffectResource>,
+    // bind_group: BindGroup,
+    // param_buffer: Buffer,
+    // temp_tex: ETextureViewUsage,
+    // vertex: RenderVertices,
+    // viewport: (u32, u32, u32, u32),
 }
 impl EffectBlurBokeh {
     pub fn ready(
         param: BlurBokeh,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        queue: &wgpu::Queue,
+        _: &wgpu::Queue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
-        tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         source: PostprocessTexture,
         target: Option<PostprocessTexture>,
@@ -38,7 +49,7 @@ impl EffectBlurBokeh {
         depth_stencil: Option<DepthStencilState>,
     ) -> Option<(super::base::PostProcessDraw, PostprocessTexture)> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (param_buffer, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source);
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source);
 
             let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 

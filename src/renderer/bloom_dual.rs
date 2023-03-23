@@ -6,8 +6,8 @@ use pi_share::Share;
 
 use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect::*, IDENTITY_MATRIX, SimpleRenderExtendsData, material::{create_default_target, create_target, blend::{get_blend_state, EBlend}},};
 
-const ERROR_NOT_GET_FILTER_BRIGHNESS_USED_RT_ID: &str = "NOT_GET_FILTER_BRIGHNESS_USED_RT_ID";
-const ERROR_NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID: &str = "NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID";
+// const ERROR_NOT_GET_FILTER_BRIGHNESS_USED_RT_ID: &str = "NOT_GET_FILTER_BRIGHNESS_USED_RT_ID";
+// const ERROR_NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID: &str = "NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID";
 
 pub fn bloom_dual_render(
     bloom_dual: &BloomDual,
@@ -15,7 +15,7 @@ pub fn bloom_dual_render(
     queue: & wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     matrix: &[f32],
-    extends: SimpleRenderExtendsData,
+    _: SimpleRenderExtendsData,
     safeatlas: &SafeAtlasAllocator,
     source: PostprocessTexture,
     draws: &mut Vec<PostProcessDraw>,
@@ -38,7 +38,7 @@ pub fn bloom_dual_render(
     let filter = FilterBrightness { threshold: bloom_dual.threshold, threshold_knee: bloom_dual.threshold_knee };
     let (draw, filterresult) = EffectFilterBrightness::ready(
         filter, resources, renderdevice, queue, 0,
-        (to_w, to_h), &IDENTITY_MATRIX, source.get_tilloff(),
+        (to_w, to_h), &IDENTITY_MATRIX,
         1., 0., source.clone(), None,
         safeatlas, target_type, pipelines,
         color_state.clone(), None
@@ -49,7 +49,7 @@ pub fn bloom_dual_render(
     let mut temptargets = vec![];
     let mut tempsource = filterresult.clone();
     temptargets.push(filterresult);
-    for i in 0..bloom_dual.iteration {
+    for _ in 0..bloom_dual.iteration {
         if to_w / 2 >= 2 && to_h / 2 >= 2 {
             to_w = to_w / 2;
             to_h = to_h / 2;
@@ -59,7 +59,7 @@ pub fn bloom_dual_render(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: false }, resources,
                 renderdevice, queue,
                 0, (to_w, to_h),
-                matrix, tempsource.get_tilloff(),
+                matrix,
                 1., 0.,
                 tempsource, None, safeatlas, target_type,
                 pipelines,
@@ -78,7 +78,7 @@ pub fn bloom_dual_render(
     let mut temptarget = None;
     if realiter > 0 {
         tempsource = temptargets.pop().unwrap();
-        for i in 0..realiter {
+        for _ in 0..realiter {
             to_w = to_w * 2;
             to_h = to_w * 2;
 
@@ -88,7 +88,7 @@ pub fn bloom_dual_render(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: true }, resources,
                 renderdevice, queue,
                 0, (to_w, to_h),
-                matrix, tempsource.get_tilloff(),
+                matrix,
                 1., 0.,
                 tempsource, temptarget, safeatlas, target_type,
                 pipelines,
@@ -105,13 +105,13 @@ pub fn bloom_dual_render(
         return source;
     } else {
         match &source.view {
-            pi_render::renderer::texture::texture_view::ETextureViewUsage::SRT(val) => {
+            pi_render::renderer::texture::texture_view::ETextureViewUsage::SRT(_) => {
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = bloom_dual.intensity;
                 let (draw, result) = EffectCopy::ready(
                     copyparam.clone(), resources,
                     renderdevice, queue, 0, (source.use_w(), source.use_h()),
-                    &IDENTITY_MATRIX, tempsource.get_tilloff(),
+                    &IDENTITY_MATRIX,
                     1., 0.,
                     tempsource, Some(source),
                     safeatlas, target_type, pipelines,
@@ -126,7 +126,7 @@ pub fn bloom_dual_render(
                 let (draw, result) = EffectCopy::ready(
                     copyparam.clone(), resources,
                     renderdevice, queue, 0, (source.use_w(), source.use_h()),
-                    &IDENTITY_MATRIX, tempsource.get_tilloff(),
+                    &IDENTITY_MATRIX, 
                     1., 0.,
                     source, None,
                     safeatlas, target_type, pipelines,
@@ -138,7 +138,7 @@ pub fn bloom_dual_render(
                 let (draw, result) = EffectCopy::ready(
                     copyparam.clone(), resources,
                     renderdevice, queue, 0, (result.use_w(), result.use_h()),
-                    &IDENTITY_MATRIX, result.get_tilloff(),
+                    &IDENTITY_MATRIX,
                     1., 0.,
                     result, None,
                     safeatlas, target_type, pipelines,

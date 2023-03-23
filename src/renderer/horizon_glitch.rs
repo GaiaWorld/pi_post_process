@@ -2,42 +2,19 @@
 use std::sync::Arc;
 
 use pi_assets::mgr::AssetMgr;
-use pi_render::{rhi::{device::RenderDevice, asset::RenderRes, pipeline::RenderPipeline, BufferInitDescriptor, buffer::Buffer, RenderQueue,}, components::view::target_alloc::{SafeAtlasAllocator, TargetType}, renderer::{pipeline::DepthStencilState, vertices::{EVerticesBufferUsage, RenderVertices}, vertex_buffer::VertexBufferAllocator}, };
+use pi_render::{rhi::{device::RenderDevice, asset::RenderRes, pipeline::RenderPipeline, RenderQueue,}, components::view::target_alloc::{SafeAtlasAllocator, TargetType}, renderer::{pipeline::DepthStencilState, vertices::{EVerticesBufferUsage, RenderVertices}, vertex_buffer::VertexBufferAllocator}, };
 use pi_share::Share;
 
 use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect::*, IDENTITY_MATRIX};
 
-const UNIFORM_PARAM_SIZE: u64 = 4 * 4;
 const MAX_INSTANCE_COUNT: usize = 200;
- 
-pub fn horizon_glitch_render(
+
+pub fn horizon_glitch_render_calc(
     param: &HorizonGlitch,
     renderdevice: &RenderDevice,
     queue: & RenderQueue,
     vballocator: &mut VertexBufferAllocator,
-    matrix: &[f32],
-    safeatlas: &SafeAtlasAllocator,
-    source: PostprocessTexture,
-    target: Option<PostprocessTexture>,
-    draws: &mut Vec<PostProcessDraw>,
-    resources: &SingleImageEffectResource,
-    pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
-    color_state: wgpu::ColorTargetState,
-    depth_stencil: Option<DepthStencilState>,
-    target_type: TargetType,
-) -> PostprocessTexture {
-    let depth_stencil: Option<wgpu::DepthStencilState> = None;
-    
-    let copyparam = CopyIntensity::default();
-    let (draw, result) = EffectCopy::ready(
-        copyparam, resources, renderdevice, queue, 0,
-        (source.use_w(), source.use_h()), &IDENTITY_MATRIX, source.get_tilloff(),
-        1., 0., source.clone(), target,
-        safeatlas, target_type, pipelines,
-        color_state.clone(), None
-    ).unwrap();
-    draws.push(draw);
-
+) -> Option<RenderVertices> {
     let items = param.get_items();
     let count = items.len();
 
@@ -47,7 +24,7 @@ pub fn horizon_glitch_render(
     for i in 0..count {
         let temp = items.get(i).unwrap();
 
-        let mut y = temp.0;
+        let y = temp.0;
         let mut h = temp.1;
         
         let mut y0 = y - h / 2.0;
@@ -87,9 +64,43 @@ pub fn horizon_glitch_render(
             size_per_value: 16,
         };
 
+        Some(instance)
+    } else {
+        None
+    }
+}
+ 
+pub fn horizon_glitch_render(
+    param: &HorizonGlitch,
+    renderdevice: &RenderDevice,
+    queue: & RenderQueue,
+    instances: Option<RenderVertices>,
+    _: &[f32],
+    safeatlas: &SafeAtlasAllocator,
+    source: PostprocessTexture,
+    target: Option<PostprocessTexture>,
+    draws: &mut Vec<PostProcessDraw>,
+    resources: &SingleImageEffectResource,
+    pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
+    color_state: wgpu::ColorTargetState,
+    _: Option<DepthStencilState>,
+    target_type: TargetType,
+) -> PostprocessTexture {
+    
+    let copyparam = CopyIntensity::default();
+    let (draw, result) = EffectCopy::ready(
+        copyparam, resources, renderdevice, queue, 0,
+        (source.use_w(), source.use_h()), &IDENTITY_MATRIX, 
+        1., 0., source.clone(), target,
+        safeatlas, target_type, pipelines,
+        color_state.clone(), None
+    ).unwrap();
+    draws.push(draw);
+
+    if let Some(instances) = instances {
         let (draw, result) = EffectHorizonGlitch::ready(
-            param.clone(), instance, resources, renderdevice, queue, 0,
-            (result.use_w(), result.use_h()), &IDENTITY_MATRIX, source.get_tilloff(),
+            param.clone(), instances, resources, renderdevice, queue, 0,
+            (result.use_w(), result.use_h()), &IDENTITY_MATRIX,
             1., 0., source, Some(result),
             safeatlas, target_type, pipelines,
             color_state.clone(), None

@@ -1,13 +1,13 @@
 
 
 use pi_assets::mgr::AssetMgr;
-use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, TargetType}, rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue}, renderer::{pipeline::DepthStencilState, vertex_buffer::VertexBufferAllocator}};
+use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, TargetType}, rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue}, renderer::{pipeline::DepthStencilState, vertex_buffer::VertexBufferAllocator, vertices::RenderVertices}};
 use pi_share::Share;
 
 use crate::{
     effect::*,
     temprory_render_target::{PostprocessTexture},
-    renderer::{ bloom_dual::bloom_dual_render, horizon_glitch::horizon_glitch_render},
+    renderer::{ bloom_dual::bloom_dual_render, horizon_glitch::{horizon_glitch_render, horizon_glitch_render_calc}},
     error::EPostprocessError,
     image_effect::*,
     material::{create_default_target},
@@ -37,6 +37,7 @@ pub struct PostProcess {
     pub horizon_glitch:     Option<HorizonGlitch>,
 
     flags:                  Vec<EPostprocessRenderType>,
+    horizon_glitch_instance:Option<RenderVertices>,
 }
 
 impl Default for PostProcess {
@@ -63,6 +64,7 @@ impl Default for PostProcess {
             horizon_glitch:     None,
 
             flags:              vec![],
+            horizon_glitch_instance: None,
         }
     }
 }
@@ -87,9 +89,11 @@ impl PostProcess {
     pub fn calc(
         &mut self,
         delta_time: u64,
-        render_device: &RenderDevice,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+        vballocator: &mut VertexBufferAllocator,
     ) {
-        self.check(delta_time, true);
+        self.check(delta_time, true, device, queue, vballocator);
         // println!("{:?}", self.flags);
     }
     /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
@@ -110,7 +114,6 @@ impl PostProcess {
         encoder: &mut wgpu::CommandEncoder,
         mut src: PostprocessTexture,
         dst_size: (u32, u32),
-        vballocator: &mut VertexBufferAllocator,
         safeatlas: &SafeAtlasAllocator,
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
@@ -133,7 +136,7 @@ impl PostProcess {
             let (draw, result) = EffectCopy::ready(
                 CopyIntensity::default(), resources, device, queue,
                 0, (target.use_w(), target.use_h()),
-                &matrix, src.get_tilloff(),
+                &matrix,
                 1., 0.,
                 src, Some(target),
                 safeatlas, target_type, pipelines,
@@ -144,7 +147,7 @@ impl PostProcess {
         }
 
         let result = self._draw_front(
-            device, queue, encoder, src, &IDENTITY_MATRIX, vballocator, safeatlas, resources, pipelines, target_type
+            device, queue, encoder, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type
         );
 
         result
@@ -175,7 +178,6 @@ impl PostProcess {
         queue: & RenderQueue,
         matrix: &[f32],
         depth: f32,
-        vballocator: &mut VertexBufferAllocator,
         safeatlas: &SafeAtlasAllocator,
         source: PostprocessTexture,
         target: PostprocessTexture,
@@ -196,7 +198,7 @@ impl PostProcess {
                 };
                 let flag = *self.flags.get(count - 1).unwrap();
                 let mut draws = vec![];
-                self._draw_single_simple(device, queue, None, matrix, extends, flag, vballocator, safeatlas, source, Some(target), &mut draws, resources, pipelines, color_state, depth_stencil, target_type);
+                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, Some(target), &mut draws, resources, pipelines, color_state, depth_stencil, target_type);
     
                 // let flag = *self.flags.get(count - 1).unwrap();
                 // self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, targets[0].as_ref().unwrap(), depth_stencil, matrix, extends, flag);
@@ -215,8 +217,7 @@ impl PostProcess {
         queue: &RenderQueue,
         encoder: &mut wgpu::CommandEncoder,
         src: PostprocessTexture,
-        matrix: &[f32],
-        vballocator: &mut VertexBufferAllocator,
+        _: &[f32],
         safeatlas: &SafeAtlasAllocator,
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
@@ -227,7 +228,7 @@ impl PostProcess {
         if count <= 1 {
             Ok(src)
         } else {
-            let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+            // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
             let mut temp_result = src;
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
@@ -236,7 +237,7 @@ impl PostProcess {
                 temp_result = self._draw_single_front(
                     device, queue, encoder,
                     &IDENTITY_MATRIX, flag,
-                    vballocator, safeatlas, temp_result, None, &mut draws, resources, pipelines, None, target_type
+                    safeatlas, temp_result, None, &mut draws, resources, pipelines, None, target_type
                 );
                 draws.iter().for_each(|v| {
                     v.draw(Some(encoder), None);
@@ -254,7 +255,6 @@ impl PostProcess {
         encoder: &mut wgpu::CommandEncoder,
         matrix: & [f32],
         flag: EPostprocessRenderType,
-        vballocator: &mut VertexBufferAllocator,
         safeatlas: &SafeAtlasAllocator,
         source: PostprocessTexture,
         target: Option<PostprocessTexture>,
@@ -265,7 +265,7 @@ impl PostProcess {
         target_type: TargetType,
     ) -> PostprocessTexture {
 
-        self._draw_single_simple(device, queue, Some(encoder), matrix, SimpleRenderExtendsData::default(), flag, vballocator, safeatlas, source, target, draws, resources, pipelines, create_default_target(), depth_stencil, target_type)
+        self._draw_single_simple(device, queue, Some(encoder), matrix, SimpleRenderExtendsData::default(), flag, safeatlas, source, target, draws, resources, pipelines, create_default_target(), depth_stencil, target_type)
 
     }
 
@@ -277,7 +277,6 @@ impl PostProcess {
         matrix: & [f32],
         extends: SimpleRenderExtendsData,
         flag: EPostprocessRenderType,
-        vballocator: &mut VertexBufferAllocator,
         safeatlas: &SafeAtlasAllocator,
         source: PostprocessTexture,
         target: Option<PostprocessTexture>,
@@ -305,7 +304,7 @@ impl PostProcess {
                 let (draw, result) = EffectColorEffect::ready(
                     param, resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix,
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -318,7 +317,7 @@ impl PostProcess {
                 let (draw, result) = EffectBlurDirect::ready(
                     self.blur_direct.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix,
                     1., 1.,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -331,7 +330,7 @@ impl PostProcess {
                 let (draw, result) = EffectBlurRadial::ready(
                     self.blur_radial.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix,
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -344,7 +343,7 @@ impl PostProcess {
                 let (draw, result) = EffectBlurBokeh::ready(
                     self.blur_bokeh.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -357,7 +356,7 @@ impl PostProcess {
                 let (draw, result) = EffectRadialWave::ready(
                     self.radial_wave.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -370,7 +369,7 @@ impl PostProcess {
                 let (draw, result) = EffectFilterSobel::ready(
                     self.filter_sobel.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -383,7 +382,7 @@ impl PostProcess {
                 let (draw, result) = EffectCopy::ready(
                     self.copy.as_ref().unwrap().clone(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -396,7 +395,7 @@ impl PostProcess {
                 let (draw, result) = EffectCopy::ready(
                     CopyIntensity::default(), resources, device, queue,
                     0, dst_size,
-                    &matrix, source.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     source, target,
                     safeatlas, target_type, pipelines,
@@ -413,7 +412,7 @@ impl PostProcess {
                 let mut tow = fromw;
                 let mut toh = fromh;
                 let mut tempresult = source.clone();
-                for i in 0..blur_dual.iteration {
+                for _ in 0..blur_dual.iteration {
                     if tow / 2 >= 2 && toh / 2 >= 2 {
                         tow = tow / 2;
                         toh = toh / 2;
@@ -422,7 +421,7 @@ impl PostProcess {
                         let (draw, result) = EffectBlurDual::ready(
                             param, resources, device, queue,
                             0, (tow, toh),
-                            &matrix, tempresult.get_tilloff(),
+                            &matrix, 
                             1., 0.,
                             tempresult, None,
                             safeatlas, target_type, pipelines,
@@ -435,14 +434,14 @@ impl PostProcess {
                 }
 
                 if realiter >= 1 {
-                    for i in 1..realiter {
+                    for _ in 1..realiter {
                         tow = tow * 2;
                         toh = toh * 2;
                         let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
                         let (draw, result) = EffectBlurDual::ready(
                             param, resources, device, queue,
                             0, (tow, toh),
-                            &matrix, tempresult.get_tilloff(),
+                            &matrix, 
                             1., 0.,
                             tempresult, None,
                             safeatlas, target_type, pipelines,
@@ -460,7 +459,7 @@ impl PostProcess {
                 let (draw, result) = EffectBlurDual::ready(
                     param, resources, device, queue,
                     0, (tow, toh),
-                    &matrix, tempresult.get_tilloff(),
+                    &matrix, 
                     extends.alpha, extends.depth,
                     tempresult, target,
                     safeatlas, target_type, pipelines,
@@ -487,7 +486,7 @@ impl PostProcess {
                 // log::warn!("HorizonGlitch {:?}", source.get_rect());
                 horizon_glitch_render(
                     self.horizon_glitch.as_ref().unwrap(),
-                    device, queue, vballocator, matrix,
+                    device, queue, self.horizon_glitch_instance.clone(), matrix,
                     safeatlas, source, target, draws, resources, pipelines, color_state, depth_stencil, target_type
                 )
             },
@@ -498,6 +497,9 @@ impl PostProcess {
         &mut self,
         delta_time: u64,
         final_step_by_draw_final: bool,
+        device: & RenderDevice,
+        queue: & RenderQueue,
+        vballocator: &mut VertexBufferAllocator,
     ) {
         self.flags.clear();
 
@@ -550,8 +552,11 @@ impl PostProcess {
         }
         if horizon_glitch {
             self.horizon_glitch.as_mut().unwrap().update(delta_time);
-            self.flags.push(EPostprocessRenderType::HorizonGlitch);
-            final_is_multi_render_steps = true;
+            self.horizon_glitch_instance = horizon_glitch_render_calc(self.horizon_glitch.as_ref().unwrap(), device, queue, vballocator);
+            if self.horizon_glitch_instance.is_some() {
+                self.flags.push(EPostprocessRenderType::HorizonGlitch);
+                final_is_multi_render_steps = true;
+            }
         }
         if filter_sobel {
             self.flags.push(EPostprocessRenderType::FilterSobel);

@@ -2,32 +2,44 @@ use std::{sync::Arc, ops::Range};
 
 use pi_map::vecmap::VecMap;
 use pi_assets::mgr::AssetMgr;
-use pi_render::{rhi::{sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, device::RenderDevice, pipeline::RenderPipeline, buffer::Buffer, bind_group::{self, BindGroup}, RenderQueue, asset::RenderRes}, renderer::{texture::texture_view::ETextureViewUsage, bind_group::BindGroupLayout, sampler::SamplerRes, vertices::RenderVertices, draw_obj::{DrawBindGroups, DrawBindGroup, DrawObj}, pipeline::DepthStencilState}, components::view::target_alloc::{SafeAtlasAllocator, TargetDescriptor, TargetType}, asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN}};
+
+use pi_render::{
+    renderer::{
+        draw_obj::{DrawObj, DrawBindGroups, DrawBindGroup},
+        pipeline::DepthStencilState
+    },
+    rhi::{
+        device::RenderDevice, 
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes
+    },
+    asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN},
+    components::view::target_alloc::{SafeAtlasAllocator, TargetType}
+};
 use pi_share::Share;
 
-use crate::{material::{tools::load_shader}, temprory_render_target::PostprocessTexture, effect::{blur_direct::BlurDirect, filter_brightness::FilterBrightness}};
+use crate::{material::{tools::load_shader}, temprory_render_target::PostprocessTexture, effect::{filter_brightness::FilterBrightness}};
 
-use super::base::{TImageEffect, ImageEffectResource, KeyPostprocessPipeline};
+use super::base::{TImageEffect, KeyPostprocessPipeline};
 
 
 pub struct EffectFilterBrightness {
-    resource: Arc<ImageEffectResource>,
-    bind_group: BindGroup,
-    param_buffer: Buffer,
-    temp_tex: ETextureViewUsage,
-    vertex: RenderVertices,
-    viewport: (u32, u32, u32, u32),
+    // resource: Arc<ImageEffectResource>,
+    // bind_group: BindGroup,
+    // param_buffer: Buffer,
+    // temp_tex: ETextureViewUsage,
+    // vertex: RenderVertices,
+    // viewport: (u32, u32, u32, u32),
 }
 impl EffectFilterBrightness {
     pub fn ready(
         param: FilterBrightness,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        queue: &wgpu::Queue,
+        _: &wgpu::Queue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
-        tex_matrix: (f32, f32, f32, f32),
+        // tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         source: PostprocessTexture,
         target: Option<PostprocessTexture>,
@@ -39,7 +51,7 @@ impl EffectFilterBrightness {
     ) -> Option<(super::base::PostProcessDraw, PostprocessTexture)> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
 
-            let (param_buffer, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source);
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source);
 
             let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 
