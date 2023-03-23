@@ -30,7 +30,7 @@ pi_assets = "0.10"
 pi_map = "0.1"
 
 pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
-pi_render = { git = "https://github.com/GaiaWorld/pi_render", branch = "bevy-shader"  }
+pi_render = { git = "https://github.com/GaiaWorld/pi_render", branch = "bevy_shader"  }
 
 pi_share = "0.4"
 pi_atom = { version="0.2", features = ["serde"] }
