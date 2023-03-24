@@ -59,10 +59,9 @@ impl KeyPostprocessPipeline {
 }
 impl TAssetKeyU64 for KeyPostprocessPipeline {}
 
-pub struct PostProcessDraw {
-    pub(crate) viewport: (u32, u32, u32, u32),
-    pub(crate) draw: DrawObj,
-    pub(crate) target: ETextureViewUsage,
+pub enum PostProcessDraw {
+    Temp((u32, u32, u32, u32), DrawObj, ETextureViewUsage),
+    Final(DrawObj),
 }
 impl PostProcessDraw {
     pub fn draw<'a>(
@@ -70,58 +69,65 @@ impl PostProcessDraw {
         encoder:  Option<&mut CommandEncoder>,
         renderpass: Option<&mut wgpu::RenderPass<'a>>,
     ) {
-        let (x, y, w, h) = self.viewport;
-        if let Some(pipeline) = &self.draw.pipeline {
-            if let Some(renderpass) = renderpass {
-                renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
-                renderpass.set_scissor_rect(x, y, w, h);
-                renderpass.set_pipeline(pipeline);
-                self.draw.bindgroups.set(renderpass);
-                self.draw.vertices.iter().for_each(|v| {
-                    if let Some(v) = v {
-                        renderpass.set_vertex_buffer(v.slot, v.slice());
+        match (self, encoder, renderpass) {
+            (PostProcessDraw::Temp(viewport, draw, target), Some(encoder), None) => {
+                let (x, y, w, h) = *viewport;
+                if let Some(pipeline) = &draw.pipeline {
+                    let mut renderpass = encoder.begin_render_pass(
+                        &wgpu::RenderPassDescriptor {
+                            label: None,
+                            color_attachments: &[
+                                Some(wgpu::RenderPassColorAttachment {
+                                    view: target.view(),
+                                    resolve_target: None,
+                                    ops: wgpu::Operations {
+                                        load: wgpu::LoadOp::Load,
+                                        store: true,
+                                    }
+                                })
+                            ],
+                            depth_stencil_attachment: None,
+                        }
+                    );
+                    renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
+                    renderpass.set_scissor_rect(x, y, w, h);
+                    renderpass.set_pipeline(pipeline);
+                    draw.bindgroups.set(&mut renderpass);
+                    draw.vertices.iter().for_each(|v| {
+                        if let Some(v) = v {
+                            renderpass.set_vertex_buffer(v.slot, v.slice());
+                        }
+                    });
+                    if let Some(indeice) = &draw.indices {
+                        renderpass.set_index_buffer(indeice.slice(), indeice.format);
+                        renderpass.draw_indexed(indeice.value_range(), 0, draw.instances.clone());
+                    } else {
+                        renderpass.draw(draw.vertex.clone(), draw.instances.clone());
                     }
-                });
-                if let Some(indeice) = &self.draw.indices {
-                    renderpass.set_index_buffer(indeice.slice(), indeice.format);
-                    renderpass.draw_indexed(indeice.value_range(), 0, self.draw.instances.clone());
-                } else {
-                    renderpass.draw(self.draw.vertex.clone(), self.draw.instances.clone());
                 }
-            } else if let Some(encoder) = encoder {
-                let mut renderpass = encoder.begin_render_pass(
-                    &wgpu::RenderPassDescriptor {
-                        label: None,
-                        color_attachments: &[
-                            Some(wgpu::RenderPassColorAttachment {
-                                view: self.target.view(),
-                                resolve_target: None,
-                                ops: wgpu::Operations {
-                                    load: wgpu::LoadOp::Load,
-                                    store: true,
-                                }
-                            })
-                        ],
-                        depth_stencil_attachment: None,
+            },
+            (PostProcessDraw::Final(draw), None, Some(renderpass)) => {
+                if let Some(pipeline) = &draw.pipeline {
+                    // renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
+                    // renderpass.set_scissor_rect(x, y, w, h);
+                    renderpass.set_pipeline(pipeline);
+                    draw.bindgroups.set(renderpass);
+                    draw.vertices.iter().for_each(|v| {
+                        if let Some(v) = v {
+                            renderpass.set_vertex_buffer(v.slot, v.slice());
+                        }
+                    });
+                    if let Some(indeice) = &draw.indices {
+                        renderpass.set_index_buffer(indeice.slice(), indeice.format);
+                        renderpass.draw_indexed(indeice.value_range(), 0, draw.instances.clone());
+                    } else {
+                        renderpass.draw(draw.vertex.clone(), draw.instances.clone());
                     }
-                );
-                renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
-                renderpass.set_scissor_rect(x, y, w, h);
-                renderpass.set_pipeline(pipeline);
-                self.draw.bindgroups.set(&mut renderpass);
-                self.draw.vertices.iter().for_each(|v| {
-                    if let Some(v) = v {
-                        renderpass.set_vertex_buffer(v.slot, v.slice());
-                    }
-                });
-                if let Some(indeice) = &self.draw.indices {
-                    renderpass.set_index_buffer(indeice.slice(), indeice.format);
-                    renderpass.draw_indexed(indeice.value_range(), 0, self.draw.instances.clone());
-                } else {
-                    renderpass.draw(self.draw.vertex.clone(), self.draw.instances.clone());
                 }
-            };
+            },
+            _ => {
 
+            }
         }
     }
 }

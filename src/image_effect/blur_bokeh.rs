@@ -40,20 +40,19 @@ impl EffectBlurBokeh {
         dst_size: (u32, u32),
         geo_matrix: &[f32],
         alpha: f32, depth: f32,
-        source: PostprocessTexture,
-        target: Option<PostprocessTexture>,
+        source: &PostprocessTexture,
         safeatlas: &SafeAtlasAllocator,
         target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
-    ) -> Option<(super::base::PostProcessDraw, PostprocessTexture)> {
+    ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source, false);
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false);
 
-            let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
+            // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 
-            log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
+            // log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 
             let mut bindgroups = DrawBindGroups::default();
             bindgroups.insert_group(0, DrawBindGroup::Arc(Arc::new(bind_group)));
@@ -83,7 +82,7 @@ impl EffectBlurBokeh {
                 indices: None,
             };
             draw.vertices.insert(0, resources.quad.clone());
-            Some((super::base::PostProcessDraw { viewport: target.get_rect(), draw, target: target.view.clone() }, target))
+            Some(draw)
         } else {
             None
         }

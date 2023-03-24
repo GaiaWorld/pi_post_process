@@ -1,7 +1,9 @@
 
 
+use std::mem::replace;
+
 use pi_assets::mgr::AssetMgr;
-use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, TargetType}, rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue}, renderer::{pipeline::DepthStencilState, vertex_buffer::VertexBufferAllocator, vertices::RenderVertices}};
+use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, TargetType}, rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue}, renderer::{pipeline::DepthStencilState, vertex_buffer::VertexBufferAllocator, vertices::RenderVertices, texture::texture_view::ETextureViewUsage, draw_obj::DrawObj}};
 use pi_share::Share;
 
 use crate::{
@@ -69,6 +71,31 @@ impl Default for PostProcess {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum ETarget {
+    Temp(u32, u32),
+    Final(u32, u32),
+}
+impl ETarget {
+    pub fn size(&self) -> (u32, u32) {
+        match self {
+            ETarget::Temp(w, h) => (*w, *h),
+            ETarget::Final(w, h) => (*w, *h),
+        }
+    }
+}
+
+pub struct TempResult {
+    finaldraw: Option<DrawObj>,
+    // draw: Option<PostProcessDraw>,
+    target: Option<PostprocessTexture>,
+}
+impl TempResult {
+    fn target(&mut self) -> Option<PostprocessTexture> {
+        replace(&mut self.target, None) 
+    }
+}
+
 /// * 处理渲染逻辑
 ///   * 设置对应效果数据
 ///   * 调用 calc 预计算渲染所需数据
@@ -123,28 +150,24 @@ impl PostProcess {
         let matrix: &[f32] = &IDENTITY_MATRIX;
         
         if src.use_w() != dst_size.0 || src.use_h() != dst_size.1 {
-            let mut templist = vec![];
-            let target = if let Some(temp) = src.get_share_target() {
-                templist.push(temp);
-                let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-                PostprocessTexture::from_share_target(target, src.format())
-            } else {
-                let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-                PostprocessTexture::from_share_target(target, src.format())
-            };
+            let result = EffectCopy::get_target(None, &src, dst_size, safeatlas, target_type); 
 
-            let (draw, result) = EffectCopy::ready(
+            let draw = EffectCopy::ready(
                 CopyIntensity::default(), resources, device, queue,
-                0, (target.use_w(), target.use_h()),
+                0, dst_size,
                 &matrix,
                 1., 0.,
-                src, Some(target),
+                &src,
                 safeatlas, target_type, pipelines,
-                create_default_target(), None
+                create_default_target(), None, false
             ).unwrap();
+            
+            let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
             draw.draw(Some(encoder), None);
             src = result;
         }
+
+
 
         let result = self._draw_front(
             device, queue, encoder, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type
@@ -179,14 +202,14 @@ impl PostProcess {
         matrix: &[f32],
         depth: f32,
         safeatlas: &SafeAtlasAllocator,
-        source: PostprocessTexture,
-        target: PostprocessTexture,
+        source: &PostprocessTexture,
+        target_size: (u32, u32),
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         target_type: TargetType,
-    ) -> Option<PostProcessDraw> {
+    ) -> Option<DrawObj> {
 
         if matrix.len() == 16 {
             let count = self.flags.len();
@@ -198,11 +221,14 @@ impl PostProcess {
                 };
                 let flag = *self.flags.get(count - 1).unwrap();
                 let mut draws = vec![];
-                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, Some(target), &mut draws, resources, pipelines, color_state, depth_stencil, target_type);
-    
-                // let flag = *self.flags.get(count - 1).unwrap();
-                // self._draw_single_simple(device, queue, renderpass, postprocess_pipelines, geometrys, texture_scale_offset, texture_bind_group, targets[0].as_ref().unwrap(), depth_stencil, matrix, extends, flag);
-                Some(draws.pop().unwrap())
+                let mut tempresult = TempResult { target: None, finaldraw: None };
+                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, &mut tempresult);
+
+                if let Some(finaldraw) = tempresult.finaldraw {
+                    Some(finaldraw)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -228,46 +254,55 @@ impl PostProcess {
         if count <= 1 {
             Ok(src)
         } else {
+            let mut source = src;
+            let target = ETarget::Temp(source.use_w(), source.use_h());
             // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-            let mut temp_result = src;
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
 
                 let mut draws = vec![];
-                temp_result = self._draw_single_front(
-                    device, queue, encoder,
-                    &IDENTITY_MATRIX, flag,
-                    safeatlas, temp_result, None, &mut draws, resources, pipelines, None, target_type
+                
+                let mut temp_result = TempResult { target: None, finaldraw: None };
+
+                self._draw_single_simple(
+                    device, queue, Some(encoder),
+                    &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), flag, safeatlas,
+                    &source, target,
+                    &mut draws, resources, pipelines,
+                    create_default_target(), None, target_type, &mut temp_result
                 );
+
+                source = temp_result.target.unwrap();
+                temp_result.target = None;
                 draws.iter().for_each(|v| {
                     v.draw(Some(encoder), None);
                 });
             }
 
-            Ok(temp_result)
+            Ok(source)
         }
     }
 
-    fn _draw_single_front<'a>(
-        &self,
-        device: & RenderDevice,
-        queue: & RenderQueue,
-        encoder: &mut wgpu::CommandEncoder,
-        matrix: & [f32],
-        flag: EPostprocessRenderType,
-        safeatlas: &SafeAtlasAllocator,
-        source: PostprocessTexture,
-        target: Option<PostprocessTexture>,
-        draws: &mut Vec<PostProcessDraw>,
-        resources: &SingleImageEffectResource,
-        pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
-        depth_stencil: Option<DepthStencilState>,
-        target_type: TargetType,
-    ) -> PostprocessTexture {
+    // fn _draw_single_front<'a>(
+    //     &self,
+    //     device: & RenderDevice,
+    //     queue: & RenderQueue,
+    //     encoder: &mut wgpu::CommandEncoder,
+    //     matrix: & [f32],
+    //     flag: EPostprocessRenderType,
+    //     safeatlas: &SafeAtlasAllocator,
+    //     source: PostprocessTexture,
+    //     target: Option<PostprocessTexture>,
+    //     draws: &mut Vec<PostProcessDraw>,
+    //     resources: &SingleImageEffectResource,
+    //     pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
+    //     depth_stencil: Option<DepthStencilState>,
+    //     target_type: TargetType,
+    // ) -> PostprocessTexture {
 
-        self._draw_single_simple(device, queue, Some(encoder), matrix, SimpleRenderExtendsData::default(), flag, safeatlas, source, target, draws, resources, pipelines, create_default_target(), depth_stencil, target_type)
+    //     // self._draw_single_simple(device, queue, Some(encoder), matrix, SimpleRenderExtendsData::default(), flag, safeatlas, source, target, draws, resources, pipelines, create_default_target(), depth_stencil, target_type)
 
-    }
+    // }
 
     fn _draw_single_simple<'a>(
         &'a self,
@@ -278,20 +313,18 @@ impl PostProcess {
         extends: SimpleRenderExtendsData,
         flag: EPostprocessRenderType,
         safeatlas: &SafeAtlasAllocator,
-        source: PostprocessTexture,
-        target: Option<PostprocessTexture>,
+        source: &PostprocessTexture,
+        target: ETarget,
         draws: &mut Vec<PostProcessDraw>,
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         target_type: TargetType,
-    ) -> PostprocessTexture {
-        let dst_size = if let Some(target) = &target {
-            (target.use_w(), target.use_h())
-        } else {
-            (source.use_w(), source.use_h())
-        };
+        temp_result: &mut TempResult,
+    ) {
+        let dst_size = target.size();
+        let force_nearest_filter = source.size_eq_2(&dst_size);
         match flag {
             EPostprocessRenderType::ColorEffect => {
                 let param = ColorEffect {
@@ -299,198 +332,297 @@ impl PostProcess {
                     balance: self.color_balance.clone(),
                     vignette: self.vignette.clone(),
                     scale: self.color_scale.clone(),
-                    filter: self.color_filter.clone(),
+                    filter: self.color_filter.clone()
                 };
-                let (draw, result) = EffectColorEffect::ready(
-                    param, resources, device, queue,
-                    0, dst_size,
-                    &matrix,
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectColorEffect::ready(
+                            param, resources, device, queue, 0, dst_size, &matrix, extends.alpha, extends.depth,
+                            source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectColorEffect::ready(
+                            param, resources, device, queue, 0, dst_size, &matrix, extends.alpha, extends.depth,
+                            source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::BlurDirect => {
-                let (draw, result) = EffectBlurDirect::ready(
-                    self.blur_direct.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix,
-                    1., 1.,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectBlurDirect::ready(
+                            self.blur_direct.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, 1., 1., source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectBlurDirect::ready(
+                            self.blur_direct.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, 1., 1., source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::BlurRadial => {
-                let (draw, result) = EffectBlurRadial::ready(
-                    self.blur_radial.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix,
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectBlurRadial::ready(
+                            self.blur_radial.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, extends.alpha, extends.depth, source, safeatlas, target_type, pipelines,  color_state, depth_stencil
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectBlurRadial::ready(
+                            self.blur_radial.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, extends.alpha, extends.depth, source, safeatlas, target_type, pipelines,  color_state, depth_stencil
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::BlurBokeh => {
-                let (draw, result) = EffectBlurBokeh::ready(
-                    self.blur_bokeh.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectBlurBokeh::ready(
+                            self.blur_bokeh.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, extends.alpha, extends.depth, &source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectBlurBokeh::ready(
+                            self.blur_bokeh.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix, extends.alpha, extends.depth, &source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::RadialWave => {
-                let (draw, result) = EffectRadialWave::ready(
-                    self.radial_wave.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectRadialWave::ready(
+                            self.radial_wave.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectRadialWave::ready(
+                            self.radial_wave.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::FilterSobel => {
-                let (draw, result) = EffectFilterSobel::ready(
-                    self.filter_sobel.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectFilterSobel::ready(
+                            self.filter_sobel.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectFilterSobel::ready(
+                            self.filter_sobel.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::CopyIntensity => {
-                let (draw, result) = EffectCopy::ready(
-                    self.copy.as_ref().unwrap().clone(), resources, device, queue,
-                    0, dst_size,
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectCopy::ready(
+                            self.copy.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectCopy::ready(
+                            self.copy.as_ref().unwrap().clone(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::FinalCopyIntensity => {
-                let (draw, result) = EffectCopy::ready(
-                    CopyIntensity::default(), resources, device, queue,
-                    0, dst_size,
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    source, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                return result; 
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectCopy::ready(
+                            CopyIntensity::default(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectCopy::ready(
+                            CopyIntensity::default(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
             },
             EPostprocessRenderType::BlurDual => {
-                let mut realiter = 0;
-                let blur_dual = self.blur_dual.as_ref().unwrap();
-                let fromw = dst_size.0;
-                let fromh = dst_size.1;
-                let mut tow = fromw;
-                let mut toh = fromh;
-                let mut tempresult = source.clone();
-                for _ in 0..blur_dual.iteration {
-                    if tow / 2 >= 2 && toh / 2 >= 2 {
-                        tow = tow / 2;
-                        toh = toh / 2;
-                        realiter += 1;
-                        let param = BlurDualForBuffer { param: blur_dual.clone(), isup: false };
-                        let (draw, result) = EffectBlurDual::ready(
-                            param, resources, device, queue,
-                            0, (tow, toh),
-                            &matrix, 
-                            1., 0.,
-                            tempresult, None,
-                            safeatlas, target_type, pipelines,
-                            create_default_target(), None
-                        ).unwrap();
-                        draws.push(draw);
-                        tempresult = result;
-                        // log::warn!("Down: {:?}", (tow, toh));
-                    }
-                }
-
-                if realiter >= 1 {
-                    for _ in 1..realiter {
-                        tow = tow * 2;
-                        toh = toh * 2;
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let mut realiter = 0;
+                        let blur_dual = self.blur_dual.as_ref().unwrap();
+                        let fromw = dst_size.0;
+                        let fromh = dst_size.1;
+                        let mut tow = fromw;
+                        let mut toh = fromh;
+                        let mut tempresult = source.clone();
+                        for _ in 0..blur_dual.iteration {
+                            if tow / 2 >= 2 && toh / 2 >= 2 {
+                                tow = tow / 2;
+                                toh = toh / 2;
+                                realiter += 1;
+                                let param = BlurDualForBuffer { param: blur_dual.clone(), isup: false };
+                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                                let draw = EffectBlurDual::ready(
+                                    param, resources, device, queue,
+                                    0, (tow, toh),
+                                    &matrix, 
+                                    1., 0.,
+                                    tempresult,
+                                    safeatlas, target_type, pipelines,
+                                    create_default_target(), None
+                                ).unwrap();
+                                
+                                let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                                draws.push(draw);
+                                tempresult = result;
+                                // log::warn!("Down: {:?}", (tow, toh));
+                            }
+                        }
+        
+                        if realiter >= 1 {
+                            for _ in 1..realiter {
+                                tow = tow * 2;
+                                toh = toh * 2;
+                                let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
+                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                                let draw = EffectBlurDual::ready(
+                                    param, resources, device, queue,
+                                    0, (tow, toh),
+                                    &matrix, 
+                                    1., 0.,
+                                    tempresult,
+                                    safeatlas, target_type, pipelines,
+                                    create_default_target(), None
+                                ).unwrap();
+                                let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                                draws.push(draw);
+                                tempresult = result;
+                                // log::warn!("Up: {:?}", (tow, toh));
+                            }
+                        }
+        
+                        tow = fromw;
+                        toh = fromh;
                         let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
-                        let (draw, result) = EffectBlurDual::ready(
+                        let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                        let draw = EffectBlurDual::ready(
                             param, resources, device, queue,
                             0, (tow, toh),
                             &matrix, 
-                            1., 0.,
-                            tempresult, None,
+                            extends.alpha, extends.depth,
+                            tempresult,
                             safeatlas, target_type, pipelines,
-                            create_default_target(), None
+                            color_state, depth_stencil
                         ).unwrap();
+
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                         draws.push(draw);
-                        tempresult = result;
-                        // log::warn!("Up: {:?}", (tow, toh));
-                    }
+                        temp_result.target = Some(result);
+                    },
+                    _ => {
+                        return;
+                    },
                 }
-
-                tow = fromw;
-                toh = fromh;
-                let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
-                let (draw, result) = EffectBlurDual::ready(
-                    param, resources, device, queue,
-                    0, (tow, toh),
-                    &matrix, 
-                    extends.alpha, extends.depth,
-                    tempresult, target,
-                    safeatlas, target_type, pipelines,
-                    color_state, depth_stencil
-                ).unwrap();
-                draws.push(draw);
-                // log::warn!("Final: {:?}", (tow, toh));
-                // log::warn!("Final {:?}", result.get_rect());
-
-                return result; 
+                return;
             },
             EPostprocessRenderType::BloomDual => {
-                if let Some(encoder) = encoder {
-                    bloom_dual_render(
-                        self.bloom_dual.as_ref().unwrap(),
-                        device, queue, encoder, matrix, extends,
-                        safeatlas, source, draws, resources, pipelines, depth_stencil, target_type
-                    )
-                } else {
-                    source
+                match target {
+                    ETarget::Temp(_, _) => {
+                        if let Some(encoder) = encoder {
+                            let result = bloom_dual_render(
+                                self.bloom_dual.as_ref().unwrap(),
+                                device, queue, encoder, matrix, extends,
+                                safeatlas, source.clone(), draws, resources, pipelines, depth_stencil, target_type
+                            );
+                            temp_result.target = Some(result);
+                        } else {
+                            temp_result.target = Some(source.clone());
+                        };
+                        return;
+                    },
+                    _ => {
+                        return;
+                    },
                 }
             },
             EPostprocessRenderType::HorizonGlitch => {
-                // log::warn!("HorizonGlitch {:?}", source.get_rect());
-                horizon_glitch_render(
-                    self.horizon_glitch.as_ref().unwrap(),
-                    device, queue, self.horizon_glitch_instance.clone(), matrix,
-                    safeatlas, source, target, draws, resources, pipelines, color_state, depth_stencil, target_type
-                )
+                match target {
+                    ETarget::Temp(_, _) => {
+                        if let Some(encoder) = encoder {
+                            let result = horizon_glitch_render(
+                                self.horizon_glitch.as_ref().unwrap(),
+                                device, queue, self.horizon_glitch_instance.clone(), matrix,
+                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type
+                            );
+                            temp_result.target = Some(result);
+                        } else {
+                            temp_result.target = Some(source.clone());
+                        };
+                        return;
+                    },
+                    _ => {
+                        return;
+                    },
+                }
             },
-        }
+        };
+
     }
 
     fn check(

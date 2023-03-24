@@ -36,13 +36,15 @@ pub fn bloom_dual_render(
     let mut to_h = from_h;
 
     let filter = FilterBrightness { threshold: bloom_dual.threshold, threshold_knee: bloom_dual.threshold_knee };
-    let (draw, filterresult) = EffectFilterBrightness::ready(
+    let filterresult = EffectBlurDual::get_target(None, &source, (to_w, to_h), safeatlas, target_type); 
+    let draw = EffectFilterBrightness::ready(
         filter, resources, renderdevice, queue, 0,
         (to_w, to_h), &IDENTITY_MATRIX,
-        1., 0., source.clone(), None,
+        1., 0., &source,
         safeatlas, target_type, pipelines,
-        color_state.clone(), None
+        color_state.clone(), None, false
     ).unwrap();
+    let draw = PostProcessDraw::Temp(filterresult.get_rect(), draw, filterresult.view.clone() );
     draw.draw(Some(encoder), None);
 
     let mut realiter = 0;
@@ -55,13 +57,14 @@ pub fn bloom_dual_render(
             to_h = to_h / 2;
             realiter += 1;
     
-            let (draw, result) = EffectBlurDual::ready(
+            let result = EffectBlurDual::get_target(None, &tempsource, (to_w, to_h), safeatlas, target_type); 
+            let draw = EffectBlurDual::ready(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: false }, resources,
                 renderdevice, queue,
                 0, (to_w, to_h),
                 matrix,
                 1., 0.,
-                tempsource, None, safeatlas, target_type,
+                tempsource, safeatlas, target_type,
                 pipelines,
                 color_state.clone(),
                 None,
@@ -69,6 +72,7 @@ pub fn bloom_dual_render(
 
             tempsource = result.clone();
 
+            let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
             draw.draw(Some(encoder), None);
             temptargets.push(result);
         }
@@ -83,19 +87,21 @@ pub fn bloom_dual_render(
             to_h = to_w * 2;
 
             temptarget = temptargets.pop();
-
-            let (draw, result) = EffectBlurDual::ready(
+            
+            let result = EffectBlurDual::get_target(temptarget, &tempsource, (to_w, to_h), safeatlas, target_type); 
+            let draw = EffectBlurDual::ready(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: true }, resources,
                 renderdevice, queue,
                 0, (to_w, to_h),
                 matrix,
                 1., 0.,
-                tempsource, temptarget, safeatlas, target_type,
+                tempsource, safeatlas, target_type,
                 pipelines,
                 color_state_for_add.clone(),
                 None,
             ).unwrap();
 
+            let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
             tempsource = result;
             draw.draw(Some(encoder), None);
         }
@@ -108,42 +114,49 @@ pub fn bloom_dual_render(
             pi_render::renderer::texture::texture_view::ETextureViewUsage::SRT(_) => {
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = bloom_dual.intensity;
-                let (draw, result) = EffectCopy::ready(
+                let dst_size = (source.use_w(), source.use_h());
+                let result = EffectCopy::get_target(Some(source), &tempsource, dst_size, safeatlas, target_type);
+                let draw = EffectCopy::ready(
                     copyparam.clone(), resources,
-                    renderdevice, queue, 0, (source.use_w(), source.use_h()),
+                    renderdevice, queue, 0, dst_size,
                     &IDENTITY_MATRIX,
                     1., 0.,
-                    tempsource, Some(source),
+                    &tempsource,
                     safeatlas, target_type, pipelines,
-                    color_state_for_add.clone(), depth_stencil
+                    color_state_for_add.clone(), depth_stencil, false
                 ).unwrap();
+                let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draws.push(draw);
                 return result;
             },
             _ => {
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = 1.0;
-                let (draw, result) = EffectCopy::ready(
+                let dst_size = (source.use_w(), source.use_h());
+                let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type);
+                let draw = EffectCopy::ready(
                     copyparam.clone(), resources,
-                    renderdevice, queue, 0, (source.use_w(), source.use_h()),
+                    renderdevice, queue, 0, dst_size,
                     &IDENTITY_MATRIX, 
                     1., 0.,
-                    source, None,
+                    &source,
                     safeatlas, target_type, pipelines,
-                    color_state.clone(), None
+                    color_state.clone(), None, false
                 ).unwrap();
+                let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draw.draw(Some(encoder), None);
-                
+
                 copyparam.intensity = bloom_dual.intensity;
-                let (draw, result) = EffectCopy::ready(
+                let draw = EffectCopy::ready(
                     copyparam.clone(), resources,
-                    renderdevice, queue, 0, (result.use_w(), result.use_h()),
+                    renderdevice, queue, 0, dst_size,
                     &IDENTITY_MATRIX,
                     1., 0.,
-                    result, None,
+                    &tempsource,
                     safeatlas, target_type, pipelines,
-                    color_state_for_add.clone(), depth_stencil
+                    color_state_for_add.clone(), depth_stencil, true
                 ).unwrap();
+                let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draws.push(draw);
 
                 return result;

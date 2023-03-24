@@ -77,7 +77,7 @@ pub fn horizon_glitch_render(
     instances: Option<RenderVertices>,
     _: &[f32],
     safeatlas: &SafeAtlasAllocator,
-    source: PostprocessTexture,
+    source: &PostprocessTexture,
     target: Option<PostprocessTexture>,
     draws: &mut Vec<PostProcessDraw>,
     resources: &SingleImageEffectResource,
@@ -88,23 +88,28 @@ pub fn horizon_glitch_render(
 ) -> PostprocessTexture {
     
     let copyparam = CopyIntensity::default();
-    let (draw, result) = EffectCopy::ready(
+    let dst_size = (source.use_w(), source.use_h());
+    let draw = EffectCopy::ready(
         copyparam, resources, renderdevice, queue, 0,
-        (source.use_w(), source.use_h()), &IDENTITY_MATRIX, 
-        1., 0., source.clone(), target,
+        dst_size, &IDENTITY_MATRIX, 
+        1., 0., source,
         safeatlas, target_type, pipelines,
-        color_state.clone(), None
+        color_state.clone(), None, false
     ).unwrap();
+    let result = EffectBlurDual::get_target(target, &source, dst_size, safeatlas, target_type); 
+    let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
 
     if let Some(instances) = instances {
-        let (draw, result) = EffectHorizonGlitch::ready(
+        let dst_size = (result.use_w(), result.use_h());
+        let draw = EffectHorizonGlitch::ready(
             param.clone(), instances, resources, renderdevice, queue, 0,
-            (result.use_w(), result.use_h()), &IDENTITY_MATRIX,
-            1., 0., source, Some(result),
+            dst_size, &IDENTITY_MATRIX,
+            1., 0., source,
             safeatlas, target_type, pipelines,
             color_state.clone(), None
         ).unwrap();
+        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
         draws.push(draw);
     
         result

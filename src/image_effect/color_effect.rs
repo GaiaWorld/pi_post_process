@@ -41,21 +41,21 @@ impl EffectColorEffect {
         geo_matrix: &[f32],
         // tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
-        source: PostprocessTexture,
-        target: Option<PostprocessTexture>,
+        source: &PostprocessTexture,
+        // target: Option<PostprocessTexture>,
         safeatlas: &SafeAtlasAllocator,
         target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
-    ) -> Option<(super::base::PostProcessDraw, PostprocessTexture)> {
+        force_nearest_filter: bool,
+    ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
+            // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, &source, source.size_eq(&target));
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, force_nearest_filter);
 
-
-            log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
+            // log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 
             let mut bindgroups = DrawBindGroups::default();
             bindgroups.insert_group(0, DrawBindGroup::Arc(Arc::new(bind_group)));
@@ -85,7 +85,7 @@ impl EffectColorEffect {
                 indices: None,
             };
             draw.vertices.insert(0, resources.quad.clone());
-            Some((super::base::PostProcessDraw { viewport: target.get_rect(), draw, target: target.view.clone() }, target))
+            Some(draw)
         } else {
             None
         }
