@@ -37,7 +37,7 @@ pi_atom = { version="0.2", features = ["serde"] }
 
 [dev-dependencies]
 winit = { git = "http://ser.yinengyun.com:10082/tech/winit.git" }
-wgpu = "0.13"
+wgpu = "0.15"
 image = "0.24"
 env_logger = "0.9"
 float-ord = "0.3"
