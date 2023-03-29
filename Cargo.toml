@@ -14,9 +14,9 @@ derive_deref = "1.1"
 env_logger = "0.9"
 log="0.4"
 smallvec={version = "1.8", features = ["serde"]}
-wgpu = { version = "0.14", features = ["spirv", "glsl"] }
+wgpu = { version = "0.15", features = ["spirv", "glsl"] }
 bytemuck = { version = "1.4", features = ["derive"] }
-naga = { version = "0.10", features = [
+naga = { version = "0.11", features = [
     "glsl-in",
     "spv-in",
     "spv-out",
@@ -43,12 +43,12 @@ env_logger = "0.9"
 float-ord = "0.3"
 async-trait="0.1"
 
-[patch."https://github.com/GaiaWorld/pi_render"]
-pi_render = { path = "../pi_render" }
+# [patch."https://github.com/GaiaWorld/pi_render"]
+# pi_render = { path = "../pi_render" }
 
 
-[patch."http://ser.yinengyun.com:10082/tech/winit.git"]
-winit = { path = "../winit" }
+# [patch."http://ser.yinengyun.com:10082/tech/winit.git"]
+# winit = { path = "../winit" }
 
 [net]
 git-fetch-with-cli = true
