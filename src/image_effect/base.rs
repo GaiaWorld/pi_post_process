@@ -5,7 +5,7 @@ use pi_hash::XHashMap;
 use pi_render::{
     renderer::{
         draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::{VertexBufferAllocator},
-        sampler::SamplerRes, pipeline::DepthStencilState, texture::texture_view::ETextureViewUsage
+        sampler::SamplerRes, pipeline::DepthStencilState, texture::*
     },
     rhi::{
         bind_group_layout::BindGroupLayout, device::RenderDevice, buffer::Buffer,

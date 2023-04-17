@@ -111,7 +111,7 @@ pub fn bloom_dual_render(
         return source;
     } else {
         match &source.view {
-            pi_render::renderer::texture::texture_view::ETextureViewUsage::SRT(_) => {
+            pi_render::renderer::texture::ETextureViewUsage::SRT(_) => {
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = bloom_dual.intensity;
                 let dst_size = (source.use_w(), source.use_h());

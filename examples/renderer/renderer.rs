@@ -10,13 +10,13 @@ use pi_postprocess::{
     temprory_render_target::{PostprocessTexture},
     image_effect::*,
 };
-use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, UnuseTexture, TargetDescriptor, TextureDescriptor, TargetType}, rhi::{device::RenderDevice, asset::{RenderRes, TextureRes, }, pipeline::RenderPipeline, RenderQueue, }, renderer::{texture::{image_texture::KeyImageTexture, texture_view::ETextureViewUsage}, sampler::SamplerRes, vertex_buffer::VertexBufferAllocator, draw_obj::DrawObj}, asset::TAssetKeyU64};
+use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, UnuseTexture, TargetDescriptor, TextureDescriptor, TargetType}, rhi::{device::RenderDevice, asset::{RenderRes, TextureRes, }, pipeline::RenderPipeline, RenderQueue, }, renderer::{texture::*, sampler::SamplerRes, vertex_buffer::VertexBufferAllocator, draw_obj::DrawObj}, asset::TAssetKeyU64};
 use pi_share::Share;
 use smallvec::SmallVec;
 use winit::{window::Window, event::WindowEvent};
 
 pub struct State {
-    pub surface: wgpu::Surface,
+    // pub surface: wgpu::Surface,
     pub renderdevice: RenderDevice,
     pub queue: RenderQueue,
     pub config: wgpu::SurfaceConfiguration,
@@ -40,13 +40,16 @@ pub struct State {
 impl State {
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            dx12_shader_compiler: wgpu::Dx12Compiler ::default(),
+        });
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
+                compatible_surface: Some(surface),
             }
         )
         .await.unwrap();
@@ -67,13 +70,14 @@ impl State {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter).get(0).unwrap().clone(),
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        // surface.configure(&device, &config);
 
         ///// 
         let postprocess = PostProcess::default();
@@ -102,6 +106,7 @@ impl State {
                 // COPY_DST means that we want to copy data to this texture
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
                 label: Some("diffuse_texture"),
+                view_formats: &vec![],
             }
         );
         queue.write_texture(
@@ -182,7 +187,7 @@ impl State {
         EffectRadialWave::setup(&renderdevice, &mut resources, &asset_samplers);
 
         Self {
-            surface,
+            // surface,
             renderdevice,
             queue,
             config,
@@ -211,7 +216,7 @@ impl State {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
-            self.surface.configure(&self.renderdevice.wgpu_device(), &self.config);
+            // self.surface.configure(&self.renderdevice.wgpu_device(), &self.config);
         }
     }
 
@@ -266,7 +271,7 @@ impl State {
         &mut self,
     ) -> Result<(), wgpu::SurfaceError> {
         // let last_time = SystemTime::now();
-        let output = self.surface.get_current_texture()?;
+        // let output = self.surface.get_current_texture()?;
 
         // BGRASrgb
         let ouput_format = self.config.format;
@@ -396,7 +401,7 @@ impl State {
 
         self.queue.submit(std::iter::once(encoder.finish()));
 
-        output.present();
+        // output.present();
 
         // let new_time = SystemTime::now();
         // println!("{:?}", new_time.duration_since(last_time));

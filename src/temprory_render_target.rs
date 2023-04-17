@@ -1,7 +1,7 @@
 
 
 use guillotiere::Rectangle;
-use pi_render::{components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor}, renderer::texture::texture_view::ETextureViewUsage};
+use pi_render::{components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor}, renderer::texture::ETextureViewUsage};
 use smallvec::SmallVec;
 
 #[derive(Clone)]

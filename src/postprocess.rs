@@ -3,7 +3,17 @@
 use std::mem::replace;
 
 use pi_assets::mgr::AssetMgr;
-use pi_render::{components::view::target_alloc::{SafeAtlasAllocator, TargetType}, rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue}, renderer::{pipeline::DepthStencilState, vertex_buffer::VertexBufferAllocator, vertices::RenderVertices, texture::texture_view::ETextureViewUsage, draw_obj::DrawObj}};
+use pi_render::{
+    components::view::target_alloc::{SafeAtlasAllocator, TargetType},
+    rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue},
+    renderer::{
+        pipeline::DepthStencilState,
+        vertex_buffer::VertexBufferAllocator,
+        vertices::RenderVertices,
+        texture::*,
+        draw_obj::DrawObj
+    }
+};
 use pi_share::Share;
 
 use crate::{
