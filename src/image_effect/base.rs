@@ -93,10 +93,8 @@ impl PostProcessDraw {
                     renderpass.set_scissor_rect(x, y, w, h);
                     renderpass.set_pipeline(pipeline);
                     draw.bindgroups.set(&mut renderpass);
-                    draw.vertices.iter().for_each(|v| {
-                        if let Some(v) = v {
-                            renderpass.set_vertex_buffer(v.slot, v.slice());
-                        }
+                    draw.vertices.iter().for_each(|(v, _)| {
+                        renderpass.set_vertex_buffer(v.slot, v.slice());
                     });
                     if let Some(indeice) = &draw.indices {
                         renderpass.set_index_buffer(indeice.slice(), indeice.format);
@@ -112,10 +110,8 @@ impl PostProcessDraw {
                     // renderpass.set_scissor_rect(x, y, w, h);
                     renderpass.set_pipeline(pipeline);
                     draw.bindgroups.set(renderpass);
-                    draw.vertices.iter().for_each(|v| {
-                        if let Some(v) = v {
-                            renderpass.set_vertex_buffer(v.slot, v.slice());
-                        }
+                    draw.vertices.iter().for_each(|(v, _)| {
+                        renderpass.set_vertex_buffer(v.slot, v.slice());
                     });
                     if let Some(indeice) = &draw.indices {
                         renderpass.set_index_buffer(indeice.slice(), indeice.format);

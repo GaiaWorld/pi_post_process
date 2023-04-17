@@ -2,6 +2,7 @@ use std::{sync::Arc, ops::Range};
 
 use pi_assets::{mgr::AssetMgr};
 use pi_map::vecmap::VecMap;
+use pi_map::smallvecmap::SmallVecMap;
 
 use pi_render::{
     renderer::{
@@ -76,7 +77,7 @@ impl EffectBlurBokeh {
             let mut draw = DrawObj {
                 pipeline: Some(pipeline),
                 bindgroups,
-                vertices: VecMap::default(),
+                vertices: SmallVecMap::default(),
                 instances: Range { start: 0, end: 1 },
                 vertex: resources.quad.value_range(),
                 indices: None,
