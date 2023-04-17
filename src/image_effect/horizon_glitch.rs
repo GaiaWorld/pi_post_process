@@ -1,6 +1,6 @@
 use std::{sync::Arc};
 
-use pi_map::vecmap::VecMap;
+use pi_map::{vecmap::VecMap, smallvecmap::SmallVecMap};
 use pi_assets::mgr::AssetMgr;
 
 use pi_render::{
@@ -81,7 +81,7 @@ impl EffectHorizonGlitch {
             let mut draw = DrawObj {
                 pipeline: Some(pipeline),
                 bindgroups,
-                vertices: VecMap::default(),
+                vertices: SmallVecMap::default(),
                 instances: instance.value_range(),
                 vertex: resources.quad.value_range(),
                 indices: None,
