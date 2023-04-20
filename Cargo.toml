@@ -26,7 +26,7 @@ naga = { version = "0.11", features = [
 
 pi_hash="0.1"
 pi_enum_default_macro="0.1"
-pi_assets = "0.10"
+pi_assets = "0.11"
 pi_map = "0.1"
 
 pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }

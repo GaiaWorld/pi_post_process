@@ -284,13 +284,13 @@ pub trait TImageEffect {
         let sampler_linear = if let Some(sampler) = samplers.get(&Self::SAMPLER_DESC) {
             sampler
         } else {
-            samplers.insert(Self::SAMPLER_DESC.clone(), SamplerRes::new(device, &Self::SAMPLER_DESC)).unwrap()
+            samplers.insert(Self::SAMPLER_DESC.clone(), SamplerRes::new(device, &Self::SAMPLER_DESC)).ok().unwrap()
         };
         
         let sampler_nearest = if let Some(sampler) = samplers.get(&ImageEffectResource::NEAREST_FILTER) {
             sampler
         } else {
-            samplers.insert(ImageEffectResource::NEAREST_FILTER.clone(), SamplerRes::new(device, &&ImageEffectResource::NEAREST_FILTER)).unwrap()
+            samplers.insert(ImageEffectResource::NEAREST_FILTER.clone(), SamplerRes::new(device, &&ImageEffectResource::NEAREST_FILTER)).ok().unwrap()
         };
 
         resources.regist(String::from(Self::KEY), ImageEffectResource {
