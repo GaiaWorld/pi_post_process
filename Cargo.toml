@@ -14,15 +14,9 @@ derive_deref = "1.1"
 env_logger = "0.9"
 log="0.4"
 smallvec={version = "1.8", features = ["serde"]}
-wgpu = { version = "0.15", features = ["spirv", "glsl"] }
+wgpu = { version = "0.15", default-features = false, features = ["glsl"] }
 bytemuck = { version = "1.4", features = ["derive"] }
-naga = { version = "0.11", features = [
-    "glsl-in",
-    "spv-in",
-    "spv-out",
-    "wgsl-in",
-    "wgsl-out",
-] }
+naga = { version = "0.11"}
 
 pi_hash="0.1"
 pi_enum_default_macro="0.1"
