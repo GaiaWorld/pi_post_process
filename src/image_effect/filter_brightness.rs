@@ -142,7 +142,7 @@ impl TImageEffect for EffectFilterBrightness {
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
-                    unclipped_depth: true,
+                    unclipped_depth: false,
                     polygon_mode: wgpu::PolygonMode::Fill,
                     ..Default::default()
                 },
