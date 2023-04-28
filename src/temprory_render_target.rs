@@ -58,10 +58,10 @@ impl PostprocessTexture {
         self.format.clone()
     }
     pub fn get_rect(&self) -> (u32, u32, u32, u32) {
-        (self.use_x, self.use_x, self.use_w, self.use_h)
+        (self.use_x, self.use_y, self.use_w, self.use_h)
     }
     pub fn get_tilloff(&self) -> (f32, f32, f32, f32) {
-        (self.use_x as f32 / self.width as f32, self.use_x as f32 / self.height as f32, self.use_w as f32 / self.width as f32, self.use_h as f32 / self.height as f32)
+        (self.use_x as f32 / self.width as f32, self.use_y as f32 / self.height as f32, self.use_w as f32 / self.width as f32, self.use_h as f32 / self.height as f32)
     }
     pub fn get_full_size(&self) -> (u32, u32) {
         (self.width, self.height)
