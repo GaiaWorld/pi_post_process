@@ -26,6 +26,7 @@ use crate::{
     geometry::IDENTITY_MATRIX, postprocess_flags::EPostprocessRenderType, SimpleRenderExtendsData
 };
 
+#[derive(Debug)]
 pub struct PostProcess {
     // pub area_mask:          Option<AreaMask>,
     
