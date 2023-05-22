@@ -103,7 +103,7 @@ pub fn get_share_target_view(
         width,
         height,
         atlas_allocator.get_or_create_type(TargetDescriptor {
-            texture_descriptor: SmallVec::from_slice(
+            colors_descriptor: SmallVec::from_slice(
                 &[
                     TextureDescriptor {
                         mip_level_count: 1,
@@ -121,6 +121,7 @@ pub fn get_share_target_view(
             need_depth: false,
             default_width: width,
             default_height: height,
+            depth_descriptor: None,
         }),
         temp_rendertarget_list.iter()
     );
