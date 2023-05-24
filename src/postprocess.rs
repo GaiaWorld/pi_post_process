@@ -82,12 +82,6 @@ impl Default for PostProcess {
     }
 }
 
-impl Debug for PostProcess {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PostProcess").field("alpha", &self.alpha).field("copy", &self.copy).field("hsb", &self.hsb).field("color_balance", &self.color_balance).field("color_scale", &self.color_scale).field("vignette", &self.vignette).field("color_filter", &self.color_filter).field("blur_dual", &self.blur_dual).field("blur_direct", &self.blur_direct).field("blur_radial", &self.blur_radial).field("blur_bokeh", &self.blur_bokeh).field("bloom_dual", &self.bloom_dual).field("radial_wave", &self.radial_wave).field("filter_sobel", &self.filter_sobel).field("horizon_glitch", &self.horizon_glitch).finish()
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum ETarget {
     Temp(u32, u32),
