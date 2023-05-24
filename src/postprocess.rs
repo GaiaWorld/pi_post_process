@@ -1,6 +1,6 @@
 
 
-use std::mem::replace;
+use std::{mem::replace, fmt::Debug};
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
@@ -78,6 +78,12 @@ impl Default for PostProcess {
             flags:              vec![],
             horizon_glitch_instance: None,
         }
+    }
+}
+
+impl Debug for PostProcess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PostProcess").field("alpha", &self.alpha).field("copy", &self.copy).field("hsb", &self.hsb).field("color_balance", &self.color_balance).field("color_scale", &self.color_scale).field("vignette", &self.vignette).field("color_filter", &self.color_filter).field("blur_dual", &self.blur_dual).field("blur_direct", &self.blur_direct).field("blur_radial", &self.blur_radial).field("blur_bokeh", &self.blur_bokeh).field("bloom_dual", &self.bloom_dual).field("radial_wave", &self.radial_wave).field("filter_sobel", &self.filter_sobel).field("horizon_glitch", &self.horizon_glitch).finish()
     }
 }
 
@@ -281,7 +287,6 @@ impl PostProcess {
                     &mut draws, resources, pipelines,
                     create_default_target(), None, target_type, &mut temp_result
                 );
-
                 source = temp_result.target.unwrap();
                 temp_result.target = None;
                 draws.iter().for_each(|v| {

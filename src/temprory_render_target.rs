@@ -4,7 +4,7 @@ use guillotiere::Rectangle;
 use pi_render::{components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor}, renderer::texture::ETextureViewUsage};
 use smallvec::SmallVec;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PostprocessTexture {
     pub use_x: u32,
     pub use_y: u32,
@@ -103,7 +103,7 @@ pub fn get_share_target_view(
         width,
         height,
         atlas_allocator.get_or_create_type(TargetDescriptor {
-            texture_descriptor: SmallVec::from_slice(
+            colors_descriptor: SmallVec::from_slice(
                 &[
                     TextureDescriptor {
                         mip_level_count: 1,
@@ -118,6 +118,7 @@ pub fn get_share_target_view(
                     }
                 ]
             ),
+			depth_descriptor: None,
             need_depth: false,
             default_width: width,
             default_height: height,
