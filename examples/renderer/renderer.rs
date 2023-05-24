@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 use winit::{window::Window, event::WindowEvent};
 
 pub struct State {
-    // pub surface: wgpu::Surface,
+    pub surface: wgpu::Surface,
     pub renderdevice: RenderDevice,
     pub queue: RenderQueue,
     pub config: wgpu::SurfaceConfiguration,
@@ -44,12 +44,12 @@ impl State {
             backends: wgpu::Backends::VULKAN,
             dx12_shader_compiler: wgpu::Dx12Compiler ::default(),
         });
-        let surface = unsafe { instance.create_surface(window) };
+        let surface = unsafe { instance.create_surface(window).unwrap() };
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
-                compatible_surface: Some(surface),
+                compatible_surface: Some(&surface),
             }
         )
         .await.unwrap();
@@ -77,7 +77,8 @@ impl State {
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
         };
-        // surface.configure(&device, &config);
+        println!("Size: {:?}", size);
+        surface.configure(&device, &config);
 
         ///// 
         let postprocess = PostProcess::default();
@@ -150,8 +151,8 @@ impl State {
         let renderdevice = RenderDevice::from(Arc::new(device));
         let queue = RenderQueue::from(queue);
         let mut atlas = SafeAtlasAllocator::new(renderdevice.clone(), texture_assets_mgr, unusetexture_assets_mgr);
-        let mut texture_descriptor = SmallVec::<[TextureDescriptor;1]>::new();
-        texture_descriptor.push(
+        let mut colors_descriptor = SmallVec::<[TextureDescriptor;1]>::new();
+        colors_descriptor.push(
             TextureDescriptor {
                 mip_level_count: 1,
                 sample_count: 1,
@@ -165,10 +166,11 @@ impl State {
             }
         );
         let target_type = atlas.create_type(TargetDescriptor {
-            texture_descriptor,
+            colors_descriptor: colors_descriptor,
             need_depth: false,
             default_width: 2048,
             default_height: 2048,
+            depth_descriptor: None
         });
         let mut vballocator = VertexBufferAllocator::new();
         let pipelines = AssetMgr::<RenderRes<RenderPipeline>>::new(GarbageEmpty(), false, 1024, 10000);
@@ -187,7 +189,7 @@ impl State {
         EffectRadialWave::setup(&renderdevice, &mut resources, &asset_samplers);
 
         Self {
-            // surface,
+            surface,
             renderdevice,
             queue,
             config,
@@ -271,7 +273,15 @@ impl State {
         &mut self,
     ) -> Result<(), wgpu::SurfaceError> {
         // let last_time = SystemTime::now();
-        // let output = self.surface.get_current_texture()?;
+        let output = match self.surface.get_current_texture() {
+            Ok(output) => {
+                output
+            },
+            Err(e) => {
+                println!("Err {:?}", e);
+                return Ok(());
+            }
+        };
 
         // BGRASrgb
         let ouput_format = self.config.format;

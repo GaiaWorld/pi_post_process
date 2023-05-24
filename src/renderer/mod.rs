@@ -10,4 +10,5 @@ pub mod bloom_dual;
 // pub mod filter_sobel;
 // pub mod radial_wave;
 pub mod horizon_glitch;
+pub mod blur_gauss;
 // pub mod renderer;

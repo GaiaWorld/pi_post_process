@@ -17,7 +17,7 @@ use pi_render::{
 };
 use pi_share::Share;
 
-use crate::{material::{tools::load_shader}, temprory_render_target::PostprocessTexture, effect::{blur_dual::{BlurDualForBuffer}}};
+use crate::{material::{tools::load_shader}, temprory_render_target::PostprocessTexture, effect::*};
 
 use super::base::{TImageEffect, KeyPostprocessPipeline};
 

@@ -26,7 +26,7 @@ pub fn bloom_dual_render(
 ) -> PostprocessTexture {
 
     let color_state: wgpu::ColorTargetState = create_default_target();
-    let color_state_for_add: wgpu::ColorTargetState = create_target(wgpu::TextureFormat::Rgba8UnormSrgb, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
+    let color_state_for_add: wgpu::ColorTargetState = create_target(wgpu::TextureFormat::Rgba8Unorm, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
 
     let blur_dual = BlurDual { radius: bloom_dual.radius, iteration: bloom_dual.iteration, intensity: 1., simplified_up: false };
 

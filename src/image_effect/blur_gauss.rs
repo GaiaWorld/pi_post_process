@@ -1,8 +1,7 @@
 use std::{sync::Arc, ops::Range};
 
-use pi_assets::{mgr::AssetMgr};
-use pi_map::vecmap::VecMap;
-use pi_map::smallvecmap::SmallVecMap;
+use pi_map::{vecmap::VecMap, smallvecmap::SmallVecMap};
+use pi_assets::mgr::AssetMgr;
 
 use pi_render::{
     renderer::{
@@ -18,30 +17,25 @@ use pi_render::{
 };
 use pi_share::Share;
 
-use crate::{temprory_render_target::PostprocessTexture, effect::*, material::tools::load_shader};
+use crate::{material::{tools::load_shader}, temprory_render_target::PostprocessTexture, effect::*};
 
 use super::base::{TImageEffect, KeyPostprocessPipeline};
 
 
-pub struct EffectBlurBokeh {
-    // resource: Arc<ImageEffectResource>,
-    // bind_group: BindGroup,
-    // param_buffer: Buffer,
-    // temp_tex: ETextureViewUsage,
-    // vertex: RenderVertices,
-    // viewport: (u32, u32, u32, u32),
-}
-impl EffectBlurBokeh {
+pub struct EffectBlurGauss {}
+impl EffectBlurGauss {
     pub fn ready(
-        param: BlurBokeh,
+        param: &BlurGaussForBuffer,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
         _: &wgpu::Queue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
+        // tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         source: &PostprocessTexture,
+        // target: Option<PostprocessTexture>,
         safeatlas: &SafeAtlasAllocator,
         target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
@@ -49,10 +43,10 @@ impl EffectBlurBokeh {
         depth_stencil: Option<DepthStencilState>,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false);
+
+            let (_, bind_group) = Self::bind_group(device, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false);
 
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
-
             // log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 
             let mut bindgroups = DrawBindGroups::default();
@@ -90,7 +84,7 @@ impl EffectBlurBokeh {
 
     }
 }
-impl TImageEffect for EffectBlurBokeh {
+impl TImageEffect for EffectBlurGauss {
 
     const SAMPLER_DESC: SamplerDesc = SamplerDesc {
         address_mode_u: EAddressMode::ClampToEdge,
@@ -103,15 +97,15 @@ impl TImageEffect for EffectBlurBokeh {
         anisotropy_clamp: EAnisotropyClamp::None,
         border_color: None,
     };
-    const KEY: &'static str = "EffectBlurBokeh";
+    const KEY: &'static str = "EffectBlurGauss";
 
     fn shader(device: &RenderDevice) -> crate::material::tools::Shader {
         load_shader(
             device,
-            include_str!("../shaders/blur_bokeh.vert"),
-            include_str!("../shaders/blur_bokeh.frag"),
-            "blur_bokeh",
-            "blur_bokeh"
+            include_str!("../shaders/blur_gauss.vert"),
+            include_str!("../shaders/blur_gauss.frag"),
+            "blur_gauss",
+            "blur_gauss"
         )
     }
 
@@ -124,7 +118,6 @@ impl TImageEffect for EffectBlurBokeh {
         let base_attributes = vec![
             wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32x2, offset: 0, shader_location: 0 },
         ];
-
         device.create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
                 label: Some(Self::KEY),

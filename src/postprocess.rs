@@ -19,7 +19,7 @@ use pi_share::Share;
 use crate::{
     effect::*,
     temprory_render_target::{PostprocessTexture},
-    renderer::{ bloom_dual::bloom_dual_render, horizon_glitch::{horizon_glitch_render, horizon_glitch_render_calc}},
+    renderer::{ bloom_dual::bloom_dual_render, horizon_glitch::{horizon_glitch_render, horizon_glitch_render_calc}, blur_gauss::blur_gauss_render},
     error::EPostprocessError,
     image_effect::*,
     material::{create_default_target},
@@ -42,6 +42,7 @@ pub struct PostProcess {
     pub blur_direct:        Option<BlurDirect>,
     pub blur_radial:        Option<BlurRadial>,
     pub blur_bokeh:         Option<BlurBokeh>,
+    pub blur_gauss:         Option<BlurGauss>,
     
     pub bloom_dual:         Option<BloomDual>,
 
@@ -69,6 +70,7 @@ impl Default for PostProcess {
             blur_direct:        None,
             blur_radial:        None,
             blur_bokeh:         None,
+            blur_gauss:         None,
 
             bloom_dual:         None,
 
@@ -632,6 +634,26 @@ impl PostProcess {
                     },
                 }
             },
+            EPostprocessRenderType::BlurGauss => {
+                match target {
+                    ETarget::Temp(_, _) => {
+                        if let Some(encoder) = encoder {
+                            let result = blur_gauss_render(
+                                self.blur_gauss.as_ref().unwrap(),
+                                device, queue, matrix,
+                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type
+                            );
+                            temp_result.target = Some(result);
+                        } else {
+                            temp_result.target = Some(source.clone());
+                        };
+                        return;
+                    },
+                    _ => {
+                        return;
+                    },
+                }
+            },
         };
 
     }
@@ -662,6 +684,7 @@ impl PostProcess {
         let bloom_dual       = self.bloom_dual.is_some() && self.bloom_dual.as_ref().unwrap().is_enabled();
         let filter_sobel     = self.filter_sobel.is_some() && self.filter_sobel.as_ref().unwrap().is_enabled();
         let horizon_glitch   = self.horizon_glitch.is_some() && self.horizon_glitch.as_ref().unwrap().is_enabled();
+        let blur_gauss       = self.blur_gauss.is_some() && self.blur_gauss.as_ref().unwrap().is_enabled();
         let copy_intensity   = self.copy.is_some();
 
         let mut final_is_multi_render_steps = false;
@@ -687,6 +710,10 @@ impl PostProcess {
         }
         if bloom_dual {
             self.flags.push(EPostprocessRenderType::BloomDual);
+            final_is_multi_render_steps = true;
+        }
+        if blur_gauss {
+            self.flags.push(EPostprocessRenderType::BlurGauss);
             final_is_multi_render_steps = true;
         }
         if radial_wave {

@@ -10,6 +10,7 @@ pub struct PostprocessFlags {
     pub filter_sobel:       bool,
     pub horizon_glitch:     bool,
     pub radial_wave:        bool,
+    pub blur_gauss:         bool,
     pub active_count:       u8,
 }
 
@@ -26,6 +27,7 @@ impl Default for PostprocessFlags {
             filter_sobel: false,
             horizon_glitch: false,
             radial_wave: false,
+            blur_gauss: false,
             active_count: 0
         }
     }
@@ -44,4 +46,5 @@ pub enum EPostprocessRenderType {
     FilterSobel,
     CopyIntensity,
     FinalCopyIntensity,
+    BlurGauss,
 }

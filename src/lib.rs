@@ -2,17 +2,18 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub mod temprory_render_target;
+mod temprory_render_target;
 // pub mod postprocess_geometry;
-pub mod postprocess;
-pub mod effect;
-pub mod geometry;
-pub mod material;
-pub mod renderer;
+mod postprocess;
+mod effect;
+mod geometry;
+mod material;
+mod renderer;
 // pub mod postprocess_pipeline;
 // pub mod postprocess_renderer;
 pub mod error;
-pub mod image_effect;
+mod image_effect;
+pub mod prelude;
 
 mod postprocess_flags;
 
