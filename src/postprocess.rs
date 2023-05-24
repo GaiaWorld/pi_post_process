@@ -1,6 +1,6 @@
 
 
-use std::mem::replace;
+use std::{mem::replace, fmt::Debug};
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
@@ -284,7 +284,6 @@ impl PostProcess {
                     &mut draws, resources, pipelines,
                     create_default_target(), None, target_type, &mut temp_result
                 );
-
                 source = temp_result.target.unwrap();
                 temp_result.target = None;
                 draws.iter().for_each(|v| {
