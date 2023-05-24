@@ -122,6 +122,7 @@ pub fn get_share_target_view(
             need_depth: false,
             default_width: width,
             default_height: height,
+            depth_descriptor: None,
         }),
         temp_rendertarget_list.iter()
     );
