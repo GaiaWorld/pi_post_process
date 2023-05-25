@@ -20,6 +20,7 @@ mod radial_wave;
 mod vignette;
 mod horizon_glitch;
 mod color_effect;
+mod image_mask;
 
 pub use alpha::*;
 pub use area_mask::*;
@@ -40,6 +41,7 @@ pub use radial_wave::*;
 pub use vignette::*;
 pub use horizon_glitch::*;
 pub use color_effect::*;
+pub use image_mask::*;
 
 pub trait TEffectForBuffer {
     fn buffer(

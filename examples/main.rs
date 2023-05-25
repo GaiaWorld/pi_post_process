@@ -155,6 +155,7 @@ pub use pi_render::{
 pub use pi_assets::{asset::GarbageEmpty};
 use pi_futures::BoxFuture;
 use smallvec::SmallVec;
+use wgpu::Extent3d;
 
 
 #[derive(SystemParam)]
@@ -184,6 +185,8 @@ pub struct TestPostprocess {
     pub size: winit::dpi::PhysicalSize<u32>,
     pub diffuse_texture: Handle<TextureRes>,
     pub diffuse_size: wgpu::Extent3d,
+    pub mask_texture: Handle<TextureRes>,
+    pub mask_size: wgpu::Extent3d,
     pub asset_tex: Share<AssetMgr<TextureRes>>,
 }
 
@@ -371,57 +374,11 @@ impl Plugin for PluginTest {
         let asset_samplers = AssetMgr::<SamplerRes>::new(GarbageEmpty(), false, 1024, 10000);
         let pipelines = AssetMgr::<RenderRes<RenderPipeline>>::new(GarbageEmpty(), false, 1024, 10000);
 
-        //// Texture
-        let diffuse_bytes = include_bytes!("./dialog_bg.png");
-        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-        let diffuse_rgba = diffuse_image.as_bytes();
-        let dimensions = diffuse_image.dimensions();
-        let texture_size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
-        let diffuse_texture = (***renderdevice).create_texture(
-            &wgpu::TextureDescriptor {
-                // All textures are stored as 3D, we represent our 2D texture
-                // by setting depth to 1.
-                size: texture_size,
-                mip_level_count: 1, // We'll talk about this a little later
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                // Most images are stored using sRGB so we need to reflect that here.
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                // COPY_DST means that we want to copy data to this texture
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
-                label: Some("diffuse_texture"),
-                view_formats: &vec![],
-            }
-        );
-        queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
-                texture: &diffuse_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            // The actual pixel data
-            &diffuse_rgba,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
-                rows_per_image: std::num::NonZeroU32::new(dimensions.1),
-            },
-            texture_size,
-        );
-        let texture_view = diffuse_texture.create_view(
-            &wgpu::TextureViewDescriptor::default()
-        ); 
         let asset_tex = AssetMgr::<TextureRes>::new(GarbageEmpty(), false, 1024, 10000);  
-        let key_img = KeyImageTexture::from("../dialog_bg.png");
-        let diffuse_texture = asset_tex.insert(key_img.asset_u64(), TextureRes::new(texture_size.width, texture_size.height, (texture_size.width * texture_size.height * 4) as usize, texture_view, true)).unwrap();
+
+        //// Texture
+        let (diffuse_texture, diffuse_size) = texture(include_bytes!("./dialog_bg.png"), "./dialog_bg.png", &renderdevice, &queue, &asset_tex);
+        let (mask_texture, mask_size) = texture(include_bytes!("./effgezi.png"), "./effgezi.png", &renderdevice, &queue, &asset_tex);
 
 
         EffectBlurBokeh::setup(&renderdevice, &mut resources, &asset_samplers);
@@ -435,6 +392,7 @@ impl Plugin for PluginTest {
         EffectHorizonGlitch::setup(&renderdevice, &mut resources, &asset_samplers);
         EffectRadialWave::setup(&renderdevice, &mut resources, &asset_samplers);
         EffectBlurGauss::setup(&renderdevice, &mut resources, &asset_samplers);
+        EffectImageMask::setup(&renderdevice, &mut resources, &asset_samplers);
 
         app.insert_resource(TestPostprocess {
             postprocess: PostProcess::default(),
@@ -448,8 +406,10 @@ impl Plugin for PluginTest {
             pipelines,
             size: winit::dpi::PhysicalSize::<u32>::new(800, 600),
             diffuse_texture,
-            diffuse_size: texture_size,
-            asset_tex
+            diffuse_size,
+            asset_tex,
+            mask_texture,
+            mask_size,
         });
 
         app.insert_resource(TestVB(VertexBufferAllocator::new()));
@@ -464,8 +424,59 @@ impl Plugin for PluginTest {
     }
 }
 
-pub fn setup() {
+pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &RenderQueue,  asset_tex: &Share<AssetMgr<TextureRes>>) -> (Handle<TextureRes>, Extent3d) {
+    //// Texture
+    let diffuse_bytes = data;
+    let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
+    let diffuse_rgba = diffuse_image.as_bytes();
+    let dimensions = diffuse_image.dimensions();
+    let texture_size = wgpu::Extent3d {
+        width: dimensions.0,
+        height: dimensions.1,
+        depth_or_array_layers: 1,
+    };
+    let diffuse_texture = (**renderdevice).create_texture(
+        &wgpu::TextureDescriptor {
+            // All textures are stored as 3D, we represent our 2D texture
+            // by setting depth to 1.
+            size: texture_size,
+            mip_level_count: 1, // We'll talk about this a little later
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            // Most images are stored using sRGB so we need to reflect that here.
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+            // COPY_DST means that we want to copy data to this texture
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+            label: Some("diffuse_texture"),
+            view_formats: &vec![],
+        }
+    );
+    queue.write_texture(
+        // Tells wgpu where to copy the pixel data
+        wgpu::ImageCopyTexture {
+            texture: &diffuse_texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        // The actual pixel data
+        &diffuse_rgba,
+        // The layout of the texture
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
+            rows_per_image: std::num::NonZeroU32::new(dimensions.1),
+        },
+        texture_size,
+    );
+    let texture_view = diffuse_texture.create_view(
+        &wgpu::TextureViewDescriptor::default()
+    ); 
+    let key_img = KeyImageTexture::from(key);
+    let diffuse_texture = asset_tex.insert(key_img.asset_u64(), TextureRes::new(texture_size.width, texture_size.height, (texture_size.width * texture_size.height * 4) as usize, texture_view, true)).unwrap();
 
+    (diffuse_texture, texture_size)
 }
 
 pub fn sys(
@@ -476,7 +487,7 @@ pub fn sys(
 ) {
     test.draws.clear();
     let mut r = test.value_test;
-    if r == 200 {
+    if r == 255 {
         r = 0;
     } else {
         r = r + 1;
@@ -504,13 +515,25 @@ pub fn sys(
 
     // test.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-    test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+    // test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
     
     // test.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
     // test.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
 
-    test.postprocess.blur_gauss = Some(BlurGauss { radius: 8. });
+    // test.postprocess.blur_gauss = Some(BlurGauss { radius: 2. });
+
+    let src_texture = PostprocessTexture {
+        use_x: 0, // self.diffuse_size.width / 4,
+        use_y: 0, //self.diffuse_size.height / 4,
+        use_w: test.mask_size.width, // / 2,
+        use_h: test.mask_size.height, // / 2,
+        width: test.mask_size.width,
+        height: test.mask_size.height,
+        view: ETextureViewUsage::Tex(test.mask_texture.clone()),
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+    };
+    test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
 
     test.postprocess.calc(
         16,
@@ -538,8 +561,6 @@ pub fn main() {
     app.add_plugin(PiRenderPlugin::default());
     app.add_plugin(PluginWindowRender);
     app.add_plugin(PluginTest);
-
-    app.add_startup_system(setup);
     
     app.run()
 
