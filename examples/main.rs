@@ -258,7 +258,8 @@ impl Node for RenderNode {
             // postprocess.draws.clear();
             let _ = match result {
                 Ok(result) => {
-                    let matrix = [0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.];
+                    // let matrix = [0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.];
+                    let matrix = [1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.];
                     // renderpass.set_viewport(dst.use_x as f32, dst.use_y as f32, dst.use_w as f32, dst.use_h as f32, 0., 1.);
                     // println!("result {}, {}, {}, {}", result.use_x(), result.use_y(), result.use_w(), result.use_h());
                     if let Some(draw) = postprocess.postprocess.draw_final(
@@ -536,7 +537,10 @@ pub fn sys(
     // };
     // test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
 
-    let clip_sdf = ClipSdf::circle([0.5, 0.5, 0.5, 0.,  0., 0., 0., 0.,  0., 0., 0., 0., 0., 0., 0., 0.]);
+    let diff = 45.;
+    let angle = 90.;
+    let center_axis = angle * 0.5 + diff;
+    let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)));
     test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
