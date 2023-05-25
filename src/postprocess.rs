@@ -50,6 +50,7 @@ pub struct PostProcess {
     pub filter_sobel:       Option<FilterSobel>,
     pub horizon_glitch:     Option<HorizonGlitch>,
     pub image_mask:         Option<ImageMask>,
+    pub clip_sdf:           Option<ClipSdf>,
 
     flags:                  Vec<EPostprocessRenderType>,
     horizon_glitch_instance:Option<RenderVertices>,
@@ -79,6 +80,7 @@ impl Default for PostProcess {
             filter_sobel:       None,
             horizon_glitch:     None,
             image_mask:         None,
+            clip_sdf:           None,
 
             flags:              vec![],
             horizon_glitch_instance: None,
@@ -536,6 +538,27 @@ impl PostProcess {
                     },
                 }
             },
+            EPostprocessRenderType::ClipSdf => {
+                match target {
+                    ETarget::Temp(_, _) => {
+                        let result = EffectClipSdf::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let draw = EffectClipSdf::ready(
+                            self.clip_sdf.as_ref().unwrap(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                        draws.push(draw);
+                        temp_result.target = Some(result);
+                    },
+                    ETarget::Final(_, _) => {
+                        let draw = EffectClipSdf::ready(
+                            self.clip_sdf.as_ref().unwrap(), resources, device, queue,
+                            0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
+                        ).unwrap();
+                        temp_result.finaldraw = Some(draw);
+                    },
+                }
+            },
             EPostprocessRenderType::BlurDual => {
                 match target {
                     ETarget::Temp(_, _) => {
@@ -708,6 +731,7 @@ impl PostProcess {
         let horizon_glitch   = self.horizon_glitch.is_some() && self.horizon_glitch.as_ref().unwrap().is_enabled();
         let blur_gauss       = self.blur_gauss.is_some() && self.blur_gauss.as_ref().unwrap().is_enabled();
         let image_mask       = self.image_mask.is_some();
+        let clip_sdf         = self.clip_sdf.is_some();
         let copy_intensity   = self.copy.is_some();
 
         let mut final_is_multi_render_steps = false;
@@ -757,6 +781,10 @@ impl PostProcess {
         }
         if image_mask {
             self.flags.push(EPostprocessRenderType::ImageMask);
+            final_is_multi_render_steps = false;
+        }
+        if clip_sdf {
+            self.flags.push(EPostprocessRenderType::ClipSdf);
             final_is_multi_render_steps = false;
         }
         if copy_intensity {

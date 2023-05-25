@@ -12,6 +12,7 @@ pub struct PostprocessFlags {
     pub radial_wave:        bool,
     pub blur_gauss:         bool,
     pub image_mask:         bool,
+    pub clip_sdf:           bool,
     pub active_count:       u8,
 }
 
@@ -30,6 +31,7 @@ impl Default for PostprocessFlags {
             radial_wave: false,
             blur_gauss: false,
             image_mask: false,
+            clip_sdf: false,
             active_count: 0
         }
     }
@@ -50,4 +52,5 @@ pub enum EPostprocessRenderType {
     FinalCopyIntensity,
     BlurGauss,
     ImageMask,
+    ClipSdf,
 }

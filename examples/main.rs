@@ -393,6 +393,7 @@ impl Plugin for PluginTest {
         EffectRadialWave::setup(&renderdevice, &mut resources, &asset_samplers);
         EffectBlurGauss::setup(&renderdevice, &mut resources, &asset_samplers);
         EffectImageMask::setup(&renderdevice, &mut resources, &asset_samplers);
+        EffectClipSdf::setup(&renderdevice, &mut resources, &asset_samplers);
 
         app.insert_resource(TestPostprocess {
             postprocess: PostProcess::default(),
@@ -523,17 +524,20 @@ pub fn sys(
 
     // test.postprocess.blur_gauss = Some(BlurGauss { radius: 2. });
 
-    let src_texture = PostprocessTexture {
-        use_x: 0, // self.diffuse_size.width / 4,
-        use_y: 0, //self.diffuse_size.height / 4,
-        use_w: test.mask_size.width, // / 2,
-        use_h: test.mask_size.height, // / 2,
-        width: test.mask_size.width,
-        height: test.mask_size.height,
-        view: ETextureViewUsage::Tex(test.mask_texture.clone()),
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-    };
-    test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
+    // let src_texture = PostprocessTexture {
+    //     use_x: 0, // self.diffuse_size.width / 4,
+    //     use_y: 0, //self.diffuse_size.height / 4,
+    //     use_w: test.mask_size.width, // / 2,
+    //     use_h: test.mask_size.height, // / 2,
+    //     width: test.mask_size.width,
+    //     height: test.mask_size.height,
+    //     view: ETextureViewUsage::Tex(test.mask_texture.clone()),
+    //     format: wgpu::TextureFormat::Rgba8UnormSrgb,
+    // };
+    // test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
+
+    let clip_sdf = ClipSdf::circle([0.5, 0.5, 0.5, 0.,  0., 0., 0., 0.,  0., 0., 0., 0., 0., 0., 0., 0.]);
+    test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
         16,

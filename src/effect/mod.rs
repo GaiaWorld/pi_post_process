@@ -21,6 +21,7 @@ mod vignette;
 mod horizon_glitch;
 mod color_effect;
 mod image_mask;
+mod clip_sdf;
 
 pub use alpha::*;
 pub use area_mask::*;
@@ -42,6 +43,7 @@ pub use vignette::*;
 pub use horizon_glitch::*;
 pub use color_effect::*;
 pub use image_mask::*;
+pub use clip_sdf::*;
 
 pub trait TEffectForBuffer {
     fn buffer(

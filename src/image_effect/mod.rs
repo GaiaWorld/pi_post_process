@@ -11,6 +11,7 @@ mod filter_sobel;
 mod horizon_glitch;
 mod radial_wave;
 mod image_mask;
+mod clip_sdf;
 
 pub use base::*;
 pub use blur_bokeh::*;
@@ -25,3 +26,4 @@ pub use filter_sobel::*;
 pub use horizon_glitch::*;
 pub use radial_wave::*;
 pub use image_mask::*;
+pub use clip_sdf::*;
