@@ -3,6 +3,7 @@
 // pub mod shader;
 pub mod tools;
 pub mod blend;
+mod fragment_state;
 // pub mod depth_and_stencil;
 // pub mod pipeline;
 // pub mod vertex_state;
