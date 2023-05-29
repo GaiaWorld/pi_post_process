@@ -31,9 +31,11 @@ pub fn create_target(
     }
 }
 
+pub const FORMAT: wgpu::TextureFormat =  wgpu::TextureFormat::Rgba8Unorm;
+
 pub fn create_default_target() -> wgpu::ColorTargetState {
     wgpu::ColorTargetState {
-        format: wgpu::TextureFormat::Rgba8Unorm,
+        format: FORMAT,
         blend: None,
         write_mask: wgpu::ColorWrites::ALL,
     }

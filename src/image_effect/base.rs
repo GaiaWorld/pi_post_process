@@ -17,7 +17,7 @@ use pi_render::{
 use pi_share::Share;
 use wgpu::CommandEncoder;
 
-use crate::{material::{tools::{Shader}}, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
+use crate::{material::{tools::{Shader}, FORMAT}, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
 
 pub struct ImageEffectResource {
     pub shader: Shader,
@@ -203,10 +203,10 @@ pub trait TImageEffect {
         } else if let Some(temp) = source.get_share_target() {
             templist.push(temp);
             let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-            PostprocessTexture::from_share_target(target, source.format())
+            PostprocessTexture::from_share_target(target, FORMAT)
         } else {
             let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-            PostprocessTexture::from_share_target(target, source.format())
+            PostprocessTexture::from_share_target(target, FORMAT)
         };
         target
     }

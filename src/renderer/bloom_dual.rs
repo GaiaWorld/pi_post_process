@@ -4,7 +4,7 @@ use pi_render::{rhi::{device::RenderDevice, asset::RenderRes, pipeline::RenderPi
 use pi_share::Share;
 
 
-use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect::*, IDENTITY_MATRIX, SimpleRenderExtendsData, material::{create_default_target, create_target, blend::{get_blend_state, EBlend}},};
+use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect::*, IDENTITY_MATRIX, SimpleRenderExtendsData, material::{create_default_target, create_target, blend::{get_blend_state, EBlend}, FORMAT},};
 
 // const ERROR_NOT_GET_FILTER_BRIGHNESS_USED_RT_ID: &str = "NOT_GET_FILTER_BRIGHNESS_USED_RT_ID";
 // const ERROR_NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID: &str = "NOT_GET_RT_BY_FILTER_BRIGHNESS_USED_ID";
@@ -26,7 +26,7 @@ pub fn bloom_dual_render(
 ) -> PostprocessTexture {
 
     let color_state: wgpu::ColorTargetState = create_default_target();
-    let color_state_for_add: wgpu::ColorTargetState = create_target(wgpu::TextureFormat::Rgba8Unorm, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
+    let color_state_for_add: wgpu::ColorTargetState = create_target(FORMAT, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
 
     let blur_dual = BlurDual { radius: bloom_dual.radius, iteration: bloom_dual.iteration, intensity: 1., simplified_up: false };
 
