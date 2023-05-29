@@ -162,12 +162,13 @@ impl PostProcess {
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         target_type: TargetType,
+        target_format: wgpu::TextureFormat,
     ) -> Result<PostprocessTexture, EPostprocessError> {
 
         let matrix: &[f32] = &IDENTITY_MATRIX;
         
         if src.use_w() != dst_size.0 || src.use_h() != dst_size.1 {
-            let result = EffectCopy::get_target(None, &src, dst_size, safeatlas, target_type); 
+            let result = EffectCopy::get_target(None, &src, dst_size, safeatlas, target_type, target_format); 
 
             let draw = EffectCopy::ready(
                 CopyIntensity::default(), resources, device, queue,
@@ -176,7 +177,7 @@ impl PostProcess {
                 1., 0.,
                 &src,
                 safeatlas, target_type, pipelines,
-                create_default_target(), None, false
+                create_default_target(target_format), None, false
             ).unwrap();
             
             let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
@@ -187,7 +188,7 @@ impl PostProcess {
 
 
         let result = self._draw_front(
-            device, queue, encoder, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type
+            device, queue, encoder, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type, target_format
         );
 
         result
@@ -226,6 +227,7 @@ impl PostProcess {
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         target_type: TargetType,
+        target_format: wgpu::TextureFormat,
     ) -> Option<DrawObj> {
 
         if matrix.len() == 16 {
@@ -239,7 +241,7 @@ impl PostProcess {
                 let flag = *self.flags.get(count - 1).unwrap();
                 let mut draws = vec![];
                 let mut tempresult = TempResult { target: None, finaldraw: None };
-                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, &mut tempresult);
+                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, &mut tempresult);
 
                 if let Some(finaldraw) = tempresult.finaldraw {
                     Some(finaldraw)
@@ -265,6 +267,7 @@ impl PostProcess {
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         target_type: TargetType,
+        target_format: wgpu::TextureFormat,
     ) -> Result<PostprocessTexture, EPostprocessError>  {
         let count = self.flags.len();
 
@@ -286,7 +289,7 @@ impl PostProcess {
                     &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), flag, safeatlas,
                     &source, target,
                     &mut draws, resources, pipelines,
-                    create_default_target(), None, target_type, &mut temp_result
+                    create_default_target(target_format), None, target_type, target_format, &mut temp_result
                 );
                 source = temp_result.target.unwrap();
                 temp_result.target = None;
@@ -337,6 +340,7 @@ impl PostProcess {
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         target_type: TargetType,
+        target_format: wgpu::TextureFormat,
         temp_result: &mut TempResult,
     ) {
         let dst_size = target.size();
@@ -352,7 +356,7 @@ impl PostProcess {
                 };
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectColorEffect::ready(
                             param, resources, device, queue, 0, dst_size, &matrix, extends.alpha, extends.depth,
                             source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
@@ -373,7 +377,7 @@ impl PostProcess {
             EPostprocessRenderType::BlurDirect => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectBlurDirect::ready(
                             self.blur_direct.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix, 1., 1., source, safeatlas, target_type, pipelines, color_state, depth_stencil
@@ -394,7 +398,7 @@ impl PostProcess {
             EPostprocessRenderType::BlurRadial => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectBlurRadial::ready(
                             self.blur_radial.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix, extends.alpha, extends.depth, source, safeatlas, target_type, pipelines,  color_state, depth_stencil
@@ -415,7 +419,7 @@ impl PostProcess {
             EPostprocessRenderType::BlurBokeh => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectBlurBokeh::ready(
                             self.blur_bokeh.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix, extends.alpha, extends.depth, &source, safeatlas, target_type, pipelines, color_state, depth_stencil
@@ -436,7 +440,7 @@ impl PostProcess {
             EPostprocessRenderType::RadialWave => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectRadialWave::ready(
                             self.radial_wave.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
@@ -457,7 +461,7 @@ impl PostProcess {
             EPostprocessRenderType::FilterSobel => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectFilterSobel::ready(
                             self.filter_sobel.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil
@@ -478,7 +482,7 @@ impl PostProcess {
             EPostprocessRenderType::CopyIntensity => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectCopy::ready(
                             self.copy.as_ref().unwrap().clone(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
@@ -499,7 +503,7 @@ impl PostProcess {
             EPostprocessRenderType::FinalCopyIntensity => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectCopy::ready(
                             CopyIntensity::default(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
@@ -520,7 +524,7 @@ impl PostProcess {
             EPostprocessRenderType::ImageMask => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectImageMask::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectImageMask::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectImageMask::ready(
                             self.image_mask.as_ref().unwrap(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
@@ -541,7 +545,7 @@ impl PostProcess {
             EPostprocessRenderType::ClipSdf => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectClipSdf::get_target(None, &source, dst_size, safeatlas, target_type); 
+                        let result = EffectClipSdf::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
                         let draw = EffectClipSdf::ready(
                             self.clip_sdf.as_ref().unwrap(), resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter
@@ -575,7 +579,7 @@ impl PostProcess {
                                 toh = toh / 2;
                                 realiter += 1;
                                 let param = BlurDualForBuffer { param: blur_dual.clone(), isup: false };
-                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type, target_format); 
                                 let draw = EffectBlurDual::ready(
                                     param, resources, device, queue,
                                     0, (tow, toh),
@@ -583,7 +587,7 @@ impl PostProcess {
                                     1., 0.,
                                     tempresult,
                                     safeatlas, target_type, pipelines,
-                                    create_default_target(), None
+                                    create_default_target(target_format), None
                                 ).unwrap();
                                 
                                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
@@ -598,7 +602,7 @@ impl PostProcess {
                                 tow = tow * 2;
                                 toh = toh * 2;
                                 let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
-                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                                let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type, target_format); 
                                 let draw = EffectBlurDual::ready(
                                     param, resources, device, queue,
                                     0, (tow, toh),
@@ -606,7 +610,7 @@ impl PostProcess {
                                     1., 0.,
                                     tempresult,
                                     safeatlas, target_type, pipelines,
-                                    create_default_target(), None
+                                    create_default_target(target_format), None
                                 ).unwrap();
                                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                                 draws.push(draw);
@@ -618,7 +622,7 @@ impl PostProcess {
                         tow = fromw;
                         toh = fromh;
                         let param = BlurDualForBuffer { param: blur_dual.clone(), isup: true };
-                        let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type); 
+                        let result = EffectCopy::get_target(None, &tempresult, (tow, toh), safeatlas, target_type, target_format); 
                         let draw = EffectBlurDual::ready(
                             param, resources, device, queue,
                             0, (tow, toh),
@@ -646,7 +650,7 @@ impl PostProcess {
                             let result = bloom_dual_render(
                                 self.bloom_dual.as_ref().unwrap(),
                                 device, queue, encoder, matrix, extends,
-                                safeatlas, source.clone(), draws, resources, pipelines, depth_stencil, target_type
+                                safeatlas, source.clone(), draws, resources, pipelines, depth_stencil, target_type, target_format
                             );
                             temp_result.target = Some(result);
                         } else {
@@ -666,7 +670,7 @@ impl PostProcess {
                             let result = horizon_glitch_render(
                                 self.horizon_glitch.as_ref().unwrap(),
                                 device, queue, self.horizon_glitch_instance.clone(), matrix,
-                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type
+                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format
                             );
                             temp_result.target = Some(result);
                         } else {
@@ -686,7 +690,7 @@ impl PostProcess {
                             let result = blur_gauss_render(
                                 self.blur_gauss.as_ref().unwrap(),
                                 device, queue, matrix,
-                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type
+                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format
                             );
                             temp_result.target = Some(result);
                         } else {

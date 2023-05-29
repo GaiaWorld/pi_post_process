@@ -28,6 +28,7 @@ pub fn blur_gauss_render(
     color_state: wgpu::ColorTargetState,
     _: Option<DepthStencilState>,
     target_type: TargetType,
+    target_format: wgpu::TextureFormat
 ) -> PostprocessTexture {
     let dst_size = (source.use_w(), source.use_h());
     let mut drawparam = BlurGaussForBuffer { param: param.clone(), ishorizon: true, texwidth: source.use_w(), texheight: source.use_h() };
@@ -39,7 +40,7 @@ pub fn blur_gauss_render(
         safeatlas, target_type, pipelines,
         color_state.clone(), None,
     ).unwrap();
-    let result = EffectBlurDual::get_target(None, &source, dst_size, safeatlas, target_type); 
+    let result = EffectBlurDual::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
 
@@ -54,7 +55,7 @@ pub fn blur_gauss_render(
         safeatlas, target_type, pipelines,
         color_state.clone(), None,
     ).unwrap();
-    let result = EffectBlurDual::get_target(target, &result, dst_size, safeatlas, target_type); 
+    let result = EffectBlurDual::get_target(target, &result, dst_size, safeatlas, target_type, target_format); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
 

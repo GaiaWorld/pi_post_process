@@ -23,9 +23,10 @@ pub fn bloom_dual_render(
     pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
     depth_stencil: Option<DepthStencilState>,
     target_type: TargetType,
+    target_format: wgpu::TextureFormat,
 ) -> PostprocessTexture {
 
-    let color_state: wgpu::ColorTargetState = create_default_target();
+    let color_state: wgpu::ColorTargetState = create_default_target(target_format);
     let color_state_for_add: wgpu::ColorTargetState = create_target(FORMAT, get_blend_state(EBlend::Add), wgpu::ColorWrites::ALL);
 
     let blur_dual = BlurDual { radius: bloom_dual.radius, iteration: bloom_dual.iteration, intensity: 1., simplified_up: false };
@@ -36,7 +37,7 @@ pub fn bloom_dual_render(
     let mut to_h = from_h;
 
     let filter = FilterBrightness { threshold: bloom_dual.threshold, threshold_knee: bloom_dual.threshold_knee };
-    let filterresult = EffectBlurDual::get_target(None, &source, (to_w, to_h), safeatlas, target_type); 
+    let filterresult = EffectBlurDual::get_target(None, &source, (to_w, to_h), safeatlas, target_type, target_format); 
     let draw = EffectFilterBrightness::ready(
         filter, resources, renderdevice, queue, 0,
         (to_w, to_h), &IDENTITY_MATRIX,
@@ -57,7 +58,7 @@ pub fn bloom_dual_render(
             to_h = to_h / 2;
             realiter += 1;
     
-            let result = EffectBlurDual::get_target(None, &tempsource, (to_w, to_h), safeatlas, target_type); 
+            let result = EffectBlurDual::get_target(None, &tempsource, (to_w, to_h), safeatlas, target_type, target_format); 
             let draw = EffectBlurDual::ready(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: false }, resources,
                 renderdevice, queue,
@@ -88,7 +89,7 @@ pub fn bloom_dual_render(
 
             temptarget = temptargets.pop();
             
-            let result = EffectBlurDual::get_target(temptarget, &tempsource, (to_w, to_h), safeatlas, target_type); 
+            let result = EffectBlurDual::get_target(temptarget, &tempsource, (to_w, to_h), safeatlas, target_type, target_format); 
             let draw = EffectBlurDual::ready(
                 BlurDualForBuffer { param: blur_dual.clone(), isup: true }, resources,
                 renderdevice, queue,
@@ -115,7 +116,7 @@ pub fn bloom_dual_render(
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = bloom_dual.intensity;
                 let dst_size = (source.use_w(), source.use_h());
-                let result = EffectCopy::get_target(Some(source), &tempsource, dst_size, safeatlas, target_type);
+                let result = EffectCopy::get_target(Some(source), &tempsource, dst_size, safeatlas, target_type, target_format);
                 let draw = EffectCopy::ready(
                     copyparam.clone(), resources,
                     renderdevice, queue, 0, dst_size,
@@ -133,7 +134,7 @@ pub fn bloom_dual_render(
                 let mut copyparam = CopyIntensity::default();
                 copyparam.intensity = 1.0;
                 let dst_size = (source.use_w(), source.use_h());
-                let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type);
+                let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format);
                 let draw = EffectCopy::ready(
                     copyparam.clone(), resources,
                     renderdevice, queue, 0, dst_size,

@@ -252,7 +252,8 @@ impl Node for RenderNode {
                 & postprocess.atlas,
                 &postprocess.resources,
                 & postprocess.pipelines,
-                postprocess.target_type.clone()
+                postprocess.target_type.clone(),
+                wgpu::TextureFormat::Rgba8Unorm
             );
     
             // postprocess.draws.clear();
@@ -276,6 +277,7 @@ impl Node for RenderNode {
                         final_targets,
                         final_depth_and_stencil,
                         postprocess.target_type.clone(),
+                        wgpu::TextureFormat::Rgba8Unorm
                     ) {
                         let mut renderpass = commands.begin_render_pass(
                             &wgpu::RenderPassDescriptor {
@@ -523,7 +525,7 @@ pub fn sys(
 
     // test.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
 
-    // test.postprocess.blur_gauss = Some(BlurGauss { radius: 2. });
+    test.postprocess.blur_gauss = Some(BlurGauss { radius: 2. });
 
     // let src_texture = PostprocessTexture {
     //     use_x: 0, // self.diffuse_size.width / 4,
