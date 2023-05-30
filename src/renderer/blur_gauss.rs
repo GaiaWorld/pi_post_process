@@ -31,7 +31,7 @@ pub fn blur_gauss_render(
     target_format: wgpu::TextureFormat
 ) -> PostprocessTexture {
     let dst_size = (source.use_w(), source.use_h());
-    let mut drawparam = BlurGaussForBuffer { param: param.clone(), ishorizon: true, texwidth: source.use_w(), texheight: source.use_h() };
+    let mut drawparam = BlurGaussForBuffer { param: param.clone(), ishorizon: true, texwidth: source.width(), texheight: source.height() };
     let draw = EffectBlurGauss::ready(
         &drawparam , 
         resources, renderdevice, queue, 0,

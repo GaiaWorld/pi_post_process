@@ -525,7 +525,7 @@ pub fn sys(
 
     // test.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
 
-    test.postprocess.blur_gauss = Some(BlurGauss { radius: 2. });
+    test.postprocess.blur_gauss = Some(BlurGauss { radius: 3. });
 
     // let src_texture = PostprocessTexture {
     //     use_x: 0, // self.diffuse_size.width / 4,
@@ -539,11 +539,11 @@ pub fn sys(
     // };
     // test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
 
-    let diff = 45.;
-    let angle = 90.;
-    let center_axis = angle * 0.5 + diff;
-    let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)));
-    test.postprocess.clip_sdf = Some(clip_sdf);
+    // let diff = 45.;
+    // let angle = 90.;
+    // let center_axis = angle * 0.5 + diff;
+    // let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)));
+    // test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
         16,
