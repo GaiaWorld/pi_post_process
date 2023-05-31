@@ -9,10 +9,10 @@ layout(set = 0, binding = 0) uniform Model {
     mat4 vertexMatrix;
     vec4 diffuseMat;
 
-    vec4 sdfV0;
-    vec4 sdfV1;
-    vec4 sdfV2;
-    vec4 sdfV3;
+    vec4 clipSdf0;
+    vec4 clipSdf1;
+    vec4 clipSdf2;
+    vec4 clipSdf3;
 
     float mode;
     float depth;
@@ -26,7 +26,7 @@ void main() {
     gl_Position = vertexMatrix * positionUpdate;
     gl_Position.z = depth;
 
-    vVertexPosition = position + 0.5;
+    vVertexPosition = vec2(position.x + 0.5, 0.5 - position.y) * clipSdf1.xy + clipSdf1.zw;
 
     vec2 uv = position + 0.5;
     uv.y = 1.0 - uv.y;

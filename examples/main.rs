@@ -539,11 +539,13 @@ pub fn sys(
     // };
     // test.postprocess.image_mask = Some(ImageMask { image: src_texture, factor: (r as f32 * 1.2) / 255.0, mode: EMaskMode::Clip, nearest_filter: false });
 
-    // let diff = 45.;
-    // let angle = 90.;
-    // let center_axis = angle * 0.5 + diff;
-    // let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)));
-    // test.postprocess.clip_sdf = Some(clip_sdf);
+    let diff = 45.;
+    let angle = 90.;
+    let center_axis = angle * 0.5 + diff;
+    let context = ClipSdf::cacl_context_rect(0., 0., 100., 100., 50., 50., 50., 50.);
+    // let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)), context);
+    let clip_sdf = ClipSdf::circle((0.5, 0.5), 0.5, context);
+    test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
         16,

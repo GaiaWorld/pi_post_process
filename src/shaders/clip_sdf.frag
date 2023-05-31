@@ -118,8 +118,8 @@ float antialiase(float d)
         }
 
         float border_radius(vec2 vVertexPosition) {
-            vec4 scale = clipSdf0;
-            vec2 pos = vVertexPosition - scale.xy;
+            vec2 center = clipSdf0.xy;
+            vec2 pos = vVertexPosition - center;
             vec4 top = clipSdf2;
             vec4 bottom = clipSdf3;
             // 左上角
@@ -131,8 +131,8 @@ float antialiase(float d)
             // 左下角
             vec2 c4 = vec2(max(0.01, bottom.z), -max(0.01, bottom.w));
             
-            vec4 extent = clipSdf1;
-            return antialiase_round_rect(pos, extent.xy, c1, c2, c3, c4);
+            vec2 extent = clipSdf0.zw;
+            return antialiase_round_rect(pos, extent, c1, c2, c3, c4);
         }
 // Sector
 		// 扇形 sdf，负数在里面，正数在外面
@@ -157,13 +157,13 @@ float antialiase(float d)
 		// 计算
 		float sector(vec2 vVertexPosition) 
 		{
-			vec4 pie1 = clipSdf0;
-			vec4 pie2 = clipSdf1;
+			vec2 center = clipSdf0.xy;
 			
-			vec2 axisSC = pie2.xy;
-			vec2 sc = pie2.zw;
-			float r = pie1.z;
-			vec2 pos = vVertexPosition - pie1.xy;
+			vec2 axisSC = clipSdf2.xy;
+			vec2 sc = clipSdf2.zw;
+
+			float r = clipSdf0.z;
+			vec2 pos = vVertexPosition - center;
 
 			// 逆过来乘，将 扇形 乘回 到 对称轴 为 y轴 处
 			// 调整到 PI / 2 = 1.570796325
@@ -177,10 +177,12 @@ float antialiase(float d)
 // rect
 		// 计算alpha
 		float rect(vec2 vVertexPosition) {
-			vec4 scale = clipSdf0;
-			vec4 uExtent = clipSdf1; 
-			vec2 pos = vVertexPosition - scale.xy;
-			float d = sdfRect(pos, uExtent.xy);
+			vec2 center = clipSdf0.xy;
+
+			vec2 uExtent = clipSdf0.zw;
+
+			vec2 pos = vVertexPosition - center;
+			float d = sdfRect(pos, uExtent);
 
 			return antialiase(d);
 		}
@@ -200,9 +202,10 @@ float antialiase(float d)
 
 		// 计算alpha
 		float circle(vec2 vVertexPosition) {
-			vec4 circle = clipSdf0;
-			vec2 pos = vVertexPosition - circle.xy;
-			float d = sdfCircle(pos, circle.z);
+			vec2 center = clipSdf0.xy;
+			float radius = clipSdf0.z;
+			vec2 pos = vVertexPosition - center;
+			float d = sdfCircle(pos, radius);
 			
 			return antialiase(d);
 		}
