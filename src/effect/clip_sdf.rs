@@ -73,7 +73,7 @@ impl ClipSdf {
     /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn rect(center: (f32, f32), half_width: f32, half_height: f32, context_rect: (f32, f32, f32, f32)) -> Self {
         let mut result = Self::default();
-        result.mode = 0.;
+        result.mode = 2.;
         result.data[0] = center.0;
         result.data[1] = center.1;
         result.data[2] = half_width;
@@ -93,7 +93,7 @@ impl ClipSdf {
     /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn ellipse(center: (f32, f32), x_axis_len: f32, y_axis_len: f32, context_rect: (f32, f32, f32, f32)) -> Self {
         let mut result = Self::default();
-        result.mode = 0.;
+        result.mode = 1.;
         result.data[0] = center.0;
         result.data[1] = center.1;
         result.data[2] = x_axis_len;
