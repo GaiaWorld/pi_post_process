@@ -1,9 +1,4 @@
-/// Dual 模糊
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ClipSdf {
-    data: [f32;16],
-    mode: f32,
-}
+
 ///
 /// * 前置条件 DIV 节点通过设置 裁剪参数可对内容进行裁剪
 ///   * 正常情况 将 DIV完整内容 进行 裁剪渲染; 渲染范围 与 DIV范围匹配 
@@ -11,8 +6,15 @@ pub struct ClipSdf {
 ///     * 源内容范围 仅为 DIV完整内容 的一部分,
 ///     * 源内容范围与渲染时网格尺寸匹配
 ///     * 需要将 渲染范围 的裁剪信息 变换到 DIV范围 
+/// * CSS clip-path [https://drafts.csswg.org/css-shapes/#funcdef-basic-shape-circle]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ClipSdf {
+    data: [f32;16],
+    mode: f32,
+}
 impl ClipSdf {
     /// * UI 坐标系 由左到右, 由上到下
+    /// * `discard` 弃用
     pub fn cacl_context_rect(
         div_x: f32,
         div_y: f32,
@@ -35,7 +37,7 @@ impl ClipSdf {
     /// * width height 矩形宽高
     /// * border_radius_x 左上 右上 右下 左下 的 x 方向半径
     /// * border_radius_y 左上 右上 右下 左下 的 y 方向半径
-    /// * context_rect 内容 在 节点矩形范围的相对矩形范围
+    /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn border_radius(
         center: (f32, f32),
         width: f32, height: f32,
@@ -55,6 +57,7 @@ impl ClipSdf {
     /// * radius 半径 
     /// * 中心轴相对 y轴正向 夹角的 sin cos
     /// * 弧度的一半 的 sin cos 
+    /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn sector(center: (f32, f32), radius: f32, central_axis_sincos: (f32, f32), half_radian_sincos: (f32, f32), context_rect: (f32, f32, f32, f32)) -> Self {
         Self { mode: 3., data: [
             center.0, center.1, radius, 0.,
@@ -67,6 +70,7 @@ impl ClipSdf {
     /// * center 中心点
     /// * half_width 矩形宽度的一半 
     /// * half_width 矩形高度的一半 
+    /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn rect(center: (f32, f32), half_width: f32, half_height: f32, context_rect: (f32, f32, f32, f32)) -> Self {
         let mut result = Self::default();
         result.mode = 0.;
@@ -86,6 +90,7 @@ impl ClipSdf {
     /// * center 中心点
     /// * x_axis_len x 方向半轴长
     /// * y_axis_len y 方向半轴长
+    /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn ellipse(center: (f32, f32), x_axis_len: f32, y_axis_len: f32, context_rect: (f32, f32, f32, f32)) -> Self {
         let mut result = Self::default();
         result.mode = 0.;
@@ -102,6 +107,7 @@ impl ClipSdf {
         result
     }
     /// * UI 坐标系 由左到右, 由上到下
+    /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn circle(center: (f32, f32), radius: f32, context_rect: (f32, f32, f32, f32)) -> Self {
         let mut result = Self::default();
         result.mode = 0.;

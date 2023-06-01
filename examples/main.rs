@@ -188,6 +188,8 @@ pub struct TestPostprocess {
     pub mask_texture: Handle<TextureRes>,
     pub mask_size: wgpu::Extent3d,
     pub asset_tex: Share<AssetMgr<TextureRes>>,
+
+    pub viewport: (f32, f32, f32, f32),
 }
 
 pub struct RenderNode;
@@ -298,6 +300,8 @@ impl Node for RenderNode {
                             }
                         );
         
+                        let (x, y, w, h) = postprocess.viewport;
+                        renderpass.set_viewport(x, y, w, h, 0., 1.);
                         draw.draw(&mut renderpass);
                     }
                 },
@@ -414,6 +418,7 @@ impl Plugin for PluginTest {
             asset_tex,
             mask_texture,
             mask_size,
+            viewport: (400. - 100., 300. - 100., 200., 200.)
         });
 
         app.insert_resource(TestVB(VertexBufferAllocator::new()));
@@ -544,7 +549,7 @@ pub fn sys(
     let center_axis = angle * 0.5 + diff;
     let context = ClipSdf::cacl_context_rect(0., 0., 100., 100., 50., 50., 50., 50.);
     // let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)), context);
-    let clip_sdf = ClipSdf::circle((0.5, 0.5), 0.5, context);
+    let clip_sdf = ClipSdf::circle((400., 300.), 50., (200., 200., 300., 200.));
     test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
