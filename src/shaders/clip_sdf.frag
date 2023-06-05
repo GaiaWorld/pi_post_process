@@ -190,7 +190,7 @@ float antialiase(float d)
 		// 计算alpha
 		float ellipse(vec2 vVertexPosition) {
 			vec4 ellipse = clipSdf0;
-			float d = sdfEllipse(vVertexPosition, ellipse.zw, ellipse.xy);
+			float d = sdfEllipse(vVertexPosition, ellipse.xy, ellipse.zw);
 			
 			return antialiase(d);
 		}
