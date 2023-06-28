@@ -156,7 +156,7 @@ impl SingleImageEffectResource {
 
         let vertices: [f32; 12] = [-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5];
         // let key = KeyVertexBuffer::from("ImageEffectQuad");
-        let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices)).unwrap();
+        let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices), None).unwrap();
         let quad = RenderVertices {
             slot: 0,
             buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),

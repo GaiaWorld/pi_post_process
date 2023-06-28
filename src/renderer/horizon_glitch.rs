@@ -61,7 +61,7 @@ pub fn horizon_glitch_render_calc(
 
     if instance_count > 0 {
         let data = bytemuck::cast_slice(&instance_data);
-        let buffer = vballocator.create_not_updatable_buffer(renderdevice, queue, data).unwrap();
+        let buffer = vballocator.create_not_updatable_buffer(renderdevice, queue, data, None).unwrap();
         let buffer = EVerticesBufferUsage::EVBRange(Arc::new(buffer));
         let instance = RenderVertices {
             slot: 1,
