@@ -20,7 +20,7 @@ wgpu = { version = "0.15", default-features = false, features = ["glsl"] }
 
 pi_hash = "0.1"
 pi_enum_default_macro = "0.1"
-pi_assets = "0.11"
+pi_assets = "0.12"
 pi_map = "0.1"
 
 pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
