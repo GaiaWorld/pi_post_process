@@ -8,31 +8,31 @@ layout(set = 0, binding = 0) uniform ColorEffect {
     vec4 diffuseMat;
     
     float flag1;
-    float hsb_h;
-    float hsb_s;
-    float hsb_b;
-
-    float flag2;
     float color_balance_r;
     float color_balance_g;
     float color_balance_b;
 
+    float flag2;
+    float hsb_h;
+    float hsb_s;
+    float hsb_b;
+
     float flag3;
-    float vignette_begin;
-    float vignette_end;
-    float vignette_scale;
-
-    float vignette_r;
-    float vignette_g;
-    float vignette_b;
-    float flag4;
-
     float scale_shadow_in;
     float scale_shadow_out;
     float scale_mid;
-    float scale_highlight_in;
 
+    float scale_highlight_in;
     float scale_highlight_out;
+    float flag4;
+    float vignette_begin;
+
+    float vignette_end;
+    float vignette_scale;
+    float vignette_r;
+    float vignette_g;
+
+    float vignette_b;
     float flag5;
     float filter_r;
     float filter_g;
