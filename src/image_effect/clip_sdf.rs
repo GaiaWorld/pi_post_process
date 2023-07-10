@@ -41,9 +41,11 @@ impl EffectClipSdf {
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         force_nearest_filter: bool,
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (_, bind_group) = Self::bind_group(device, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false);
+            let (_, bind_group) = Self::bind_group(device, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false, src_premultiplied, dst_premultiply);
 
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 

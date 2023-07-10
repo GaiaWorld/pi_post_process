@@ -40,11 +40,21 @@ layout(set = 0, binding = 0) uniform ColorEffect {
     float filter_b;
     float depth;
     float alpha;
-    float wasm0;
+    float src_preimultiplied;
+
+    float dst_preimultiply;
+    float _wasm_0;
+    float _wasm_1;
+    float _wasm_2;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
 layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 vec3 rgb2hsv(vec3 c)
 {
@@ -109,7 +119,7 @@ vec3 vignette(vec3 rgb, vec2 uv, float start, float end, float scale, vec3 color
 void main() {
     vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
-    vec4 c = texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV);
+    vec4 c = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV));
 
     if (flag1 > 0.0) {
         c.rgb = colorBalance(c.rgb, vec3(color_balance_r, color_balance_g, color_balance_b));
@@ -132,5 +142,6 @@ void main() {
     }
 
     gl_FragColor = c;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
 }

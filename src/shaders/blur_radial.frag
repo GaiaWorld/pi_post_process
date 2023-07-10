@@ -19,8 +19,10 @@ layout(set = 0, binding = 0) uniform Model {
     float depth;
     float alpha;
 
-    // float wasm0;
-    // float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
+    float _wasm_0;
+    float _wasm_1;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
@@ -34,6 +36,11 @@ layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 //     return c;
 // }
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff, float time) {
     vec4 c = vec4(0., 0., 0., 0.);
@@ -61,14 +68,14 @@ vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff
             break;
         }
         count += 1.0;
-        c += texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + i * diff);
+        c += texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vec2(clamp(uv.x + i * diff.x, 0., 1.), clamp(uv.y + i * diff.y, 0., 1.))));
     }
 
     return c / count;
 }
 
 vec4 loop_0(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff) {
-    return texture(sampler2D(diffuseTex, sampler_diffuseTex), uv);
+    return texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv));
 }
 
 void main() {
@@ -88,5 +95,6 @@ void main() {
     } else {
         gl_FragColor = loop_0(diffuseTex, sampler_diffuseTex, vMainUV, diff);
     }
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
 }

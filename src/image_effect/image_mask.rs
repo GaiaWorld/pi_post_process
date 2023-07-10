@@ -41,9 +41,11 @@ impl EffectImageMask {
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         force_nearest_filter: bool,
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let param_buffer = param.buffer(delta_time, geo_matrix, source.get_tilloff(), alpha, depth, device, (source.use_w(), source.use_h()), dst_size);
+            let param_buffer = param.buffer(delta_time, geo_matrix, source.get_tilloff(), alpha, depth, device, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
             let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
             let sampler_mask = if param.nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
             let bind_group = device.create_bind_group(

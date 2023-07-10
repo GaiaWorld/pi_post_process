@@ -18,6 +18,11 @@ layout(set = 0, binding = 0) uniform Model {
     float fade;
     float depth;
     float alpha;
+
+    float src_preimultiplied;
+    float dst_preimultiply;
+    float _wasm_0;
+    float _wasm_1;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
@@ -26,6 +31,11 @@ layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 #define GLODEN_COS -0.7373688782616119
 #define GLODEN_SIN 0.675490294061441
 #define GLODEN_ROT mat2(GLODEN_COS, GLODEN_SIN, -GLODEN_SIN, GLODEN_COS)
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float blurRadius, float time) {
 
@@ -46,7 +56,7 @@ vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float 
         angle = GLODEN_ROT * angle;
 
         tempuv = uv + (r - 1.0) * angle;
-        vec4 bokeh = texture(sampler2D(diffuseTex, sampler_diffuseTex), tempuv);
+        vec4 bokeh = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), tempuv));
 
         accumulator += bokeh * bokeh;
         divisor += bokeh;
@@ -56,7 +66,7 @@ vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float 
 }
 
 vec4 loop_0(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv) {
-    return texture(sampler2D(diffuseTex, sampler_diffuseTex), uv);
+    return texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv));
 }
 
 void main() {
@@ -75,6 +85,7 @@ void main() {
     } else {
         gl_FragColor = loop_0(diffuseTex, sampler_diffuseTex, vMainUV);
     }
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
 
 }

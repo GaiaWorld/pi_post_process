@@ -12,7 +12,12 @@ layout(set = 0, binding = 0) uniform Param {
     float mode;
     float depth;
     float alpha;
-    float wasm0;
+    float src_preimultiplied;
+
+    float dst_preimultiply;
+    float _wasm_0;
+    float _wasm_1;
+    float _wasm_2;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
@@ -22,6 +27,11 @@ layout(location = 0) in vec2 vUV;
 layout(location = 1) in vec2 vVertexPosition;
 
 layout(location = 0) out vec4 gl_FragColor;
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 // 根据 d, 抗锯齿, 返回 alpha值
 float antialiase(float d) 
@@ -211,7 +221,7 @@ float antialiase(float d)
 		}
 
 void main() {
-    vec4 baseColor  = texture(sampler2D(diffuseTex, sampler_diffuseTex), vUV);
+    vec4 baseColor  = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vUV));
     
     float factor = 1.0;
     if (mode > 3.5) {
@@ -230,4 +240,5 @@ void main() {
 
 
     gl_FragColor = baseColor;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }

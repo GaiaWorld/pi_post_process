@@ -16,13 +16,18 @@ layout(set = 0, binding = 0) uniform Model {
 
     float depth;
     float alpha;
-    float wasm0;
-    float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
 layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff, float time) {
     vec4 c = vec4(0., 0., 0., 0.);
@@ -40,7 +45,7 @@ vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff
             break;
         }
         count += 1.0;
-        c += texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + i * diff);
+        c += texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vec2(clamp(uv.x + i * diff.x, 0., 1.), clamp(uv.y + i * diff.y, 0., 1.))));
     }
 
     return c / count;
@@ -59,6 +64,7 @@ void main() {
     vec2 diff = normalize(direct) * offset;
 
     gl_FragColor = loop_n(diffuseTex, sampler_diffuseTex, vMainUV, diff, iteration);
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
 
 }

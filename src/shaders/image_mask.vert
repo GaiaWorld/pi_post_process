@@ -15,6 +15,11 @@ layout(set = 0, binding = 0) uniform Model {
     float maskMode;
     float depth;
     float alpha;
+
+    float src_preimultiplied;
+    float dst_preimultiply;
+    float wasm0;
+    float wasm1;
 };
 
 void main() {

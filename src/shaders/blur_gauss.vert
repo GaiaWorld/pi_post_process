@@ -13,8 +13,8 @@ layout(set = 0, binding = 0) uniform Model {
 
     float depth;
     float alpha;
-    float place_hold_0;
-    float place_hold_1;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 layout(location = 0) out float support; // 采样像素个数（大致为模糊半径的两倍，因为需要左右对称）

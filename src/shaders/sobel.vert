@@ -15,8 +15,10 @@ layout(set = 0, binding = 0) uniform Param {
     float depth;
 
     float alpha;
-    float wasm0;
-    float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
+    // float wasm0;
+    // float wasm1;
     float wasm2;
 };
 

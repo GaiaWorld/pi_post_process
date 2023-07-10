@@ -11,8 +11,8 @@ layout(set = 0, binding = 0) uniform Model {
 
     float depth;
     float alpha;
-    float place_hold_0;
-    float place_hold_1;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
@@ -27,8 +27,13 @@ layout(location = 4) in vec4 uvRect;
 
 layout(location = 0) out vec4 gl_FragColor;
 
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
+
 void main() {
-    vec4 original_color = texture(sampler2D(diffuseTex, sampler_diffuseTex), vUv);
+    vec4 original_color = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vUv));
 
     // Incremental Gaussian Coefficent Calculation (See GPU Gems 3 pp. 877 - 889)
     vec3 gauss_coefficient = vec3(vGaussCoefficients,
@@ -54,12 +59,13 @@ void main() {
         vec2 st1 = vUv + offset;
         st0 = vec2(max(st0.x, uvRect.x), max(st0.y, uvRect.y));
         st1 = vec2(min(st1.x, uvRect.z), min(st1.y, uvRect.w));
-        avg_color += (texture(sampler2D(diffuseTex, sampler_diffuseTex), st0) + texture(sampler2D(diffuseTex, sampler_diffuseTex), st1)) *
+        avg_color += (texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), st0)) + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), st1))) *
                     gauss_coefficient_subtotal;
                     
     }
 
     // 输出颜色值
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor = avg_color;
     gl_FragColor.a *= alpha;
 

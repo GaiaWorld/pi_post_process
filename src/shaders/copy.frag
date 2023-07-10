@@ -19,8 +19,8 @@ layout(set = 0, binding = 0) uniform Param {
 
     float depth;
     float alpha;
-    float wasm0;
-    float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
@@ -28,6 +28,11 @@ layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
 #define PI 3.14159265358979323846
 #define TWO_PI 6.2448530717958647692
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 mat2 rotate2d(float _angle){
     float c = cos(_angle);
@@ -46,7 +51,7 @@ float shape(vec2 st, float N){
 vec4 circle(texture2D tex, sampler sp, vec2 uv, vec2 st, float radius, vec4 bgColor) {
     float intensity = 1.0 - smoothstep(radius, radius + .005, length(st * 2.0 - 1.0));
 
-    return mix(bgColor, texture(sampler2D(tex, sp), uv), intensity);
+    return mix(bgColor, texColor(texture(sampler2D(tex, sp), uv)), intensity);
 }
 
 vec4 polygon(texture2D tex, sampler sp, vec2 uv, vec2 st, float scaling, float rotate, float N, vec4 bgColor) {
@@ -56,14 +61,14 @@ vec4 polygon(texture2D tex, sampler sp, vec2 uv, vec2 st, float scaling, float r
     st = rotate2d( rotate ) * st;
     float intensity = 1.0 - smoothstep(1., 1. + .005, shape(st, N));
 
-    return mix(bgColor, texture(sampler2D(tex, sp), uv), intensity);
+    return mix(bgColor, texColor(texture(sampler2D(tex, sp), uv)), intensity);
 }
 
 void main() {
     vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
     vec4 bgColor = vec4(bgColorR, bgColorG, bgColorB, bgColorA);
     vec4 c = mix(
-        texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV),
+        texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV)),
         mix(
             circle(diffuseTex, sampler_diffuseTex, vMainUV, postiion_cs, radius, bgColor),
             polygon(diffuseTex, sampler_diffuseTex, vMainUV, postiion_cs, radius, rotate, polygonN, bgColor),
@@ -71,10 +76,9 @@ void main() {
         ),
         step(1.5, polygonN)
     );
-
-    c.rgb *= intensity;
-
-    c.a *= alpha;
-
+    
     gl_FragColor = c;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
+    gl_FragColor.rgb *= intensity;
+    gl_FragColor.a *= alpha;
 }

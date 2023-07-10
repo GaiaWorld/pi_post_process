@@ -35,6 +35,8 @@ impl super::TEffectForBuffer for FilterSobel {
         device: &pi_render::rhi::device::RenderDevice,
         _: (u32, u32),
         dst_size: (u32, u32),
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
@@ -61,8 +63,8 @@ impl super::TEffectForBuffer for FilterSobel {
         temp.push(depth);
 
         temp.push(alpha);
-        temp.push(0.);
-        temp.push(0.);
+        if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
+        if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
         temp.push(0.);
 
 

@@ -350,7 +350,6 @@ impl Plugin for PluginTest {
             pi_assets::homogeneous::GarbageEmpty(), 
             10 * size_of::<UnuseTexture>(),
             size_of::<UnuseTexture>(),
-            3 * 60 * 1000,
         );
         let mut atlas = SafeAtlasAllocator::new(renderdevice.0.clone(), texture_assets_mgr, unusetexture_assets_mgr);
         
@@ -376,7 +375,7 @@ impl Plugin for PluginTest {
             depth_descriptor: None
         });
 
-        let mut vballocator = VertexBufferAllocator::new();
+        let mut vballocator = VertexBufferAllocator::new(1024, 1000);
         let mut resources = SingleImageEffectResource::new(&renderdevice, &queue, &mut vballocator);
         let asset_samplers = AssetMgr::<SamplerRes>::new(GarbageEmpty(), false, 1024, 10000);
         let pipelines = AssetMgr::<RenderRes<RenderPipeline>>::new(GarbageEmpty(), false, 1024, 10000);
@@ -421,7 +420,7 @@ impl Plugin for PluginTest {
             viewport: (400. - 100., 300. - 100., 200., 200.)
         });
 
-        app.insert_resource(TestVB(VertexBufferAllocator::new()));
+        app.insert_resource(TestVB(VertexBufferAllocator::new(1024, 1000)));
 
         app.add_system(sys);
 
@@ -482,8 +481,8 @@ pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &Rend
     let texture_view = diffuse_texture.create_view(
         &wgpu::TextureViewDescriptor::default()
     ); 
-    let key_img = KeyImageTexture::from(key);
-    let diffuse_texture = asset_tex.insert(key_img.asset_u64(), TextureRes::new(texture_size.width, texture_size.height, (texture_size.width * texture_size.height * 4) as usize, texture_view, true)).unwrap();
+    let key_img = KeyImageTexture::File(key.to_string(), true);
+    let diffuse_texture = asset_tex.insert(key_img.asset_u64(), TextureRes::new(texture_size.width, texture_size.height, (texture_size.width * texture_size.height * 4) as usize, texture_view, true, wgpu::TextureFormat::Rgba8Unorm)).unwrap();
 
     (diffuse_texture, texture_size)
 }
@@ -511,26 +510,29 @@ pub fn sys(
     // test.postprocess.blur_radial = Some(BlurRadial { radius: 4, iteration: 10, center_x: 0., center_y: 0., start: 0.1, fade: 0.2  });
     // test.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 8, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
 
-    // if test.postprocess.horizon_glitch.is_none() {
-    //     let mut hg = HorizonGlitch::default();
-    //     hg.probability = 0.8;
-    //     hg.max_count = 200;
-    //     hg.min_count = 50;
-    //     hg.max_size = 0.05;
-    //     hg.min_size = 0.01;
-    //     hg.strength = 0.2;
-    //     test.postprocess.horizon_glitch = Some(hg);
-    // }
+    test.postprocess.src_preimultiplied = true;
+    if test.postprocess.horizon_glitch.is_none() {
+        let mut hg = HorizonGlitch::default();
+        hg.probability = 0.8;
+        hg.max_count = 200;
+        hg.min_count = 50;
+        hg.max_size = 0.05;
+        hg.min_size = 0.01;
+        hg.strength = 0.2;
+        test.postprocess.horizon_glitch = Some(hg);
+    }
 
     // test.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-    // test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+    test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
     
     // test.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 
     // test.postprocess.copy = Some(CopyIntensity { intensity: 2.0f32, polygon: r / 10, radius: r as f32 / 255.0, angle: r as f32, bg_color: (0, 0, 0, 125) });
 
     test.postprocess.blur_gauss = Some(BlurGauss { radius: 3. });
+    test.postprocess.blur_radial = Some(BlurRadial { radius: 5, iteration: 10, center_x: 0., center_y: 0., start: 0.1, fade: 0.4 });
+    test.postprocess.blur_bokeh = Some(BlurBokeh { radius: 3., iteration: 5, center_x: 0., center_y: 0., start: 0.5, fade: 0.2 });
 
     // let src_texture = PostprocessTexture {
     //     use_x: 0, // self.diffuse_size.width / 4,
@@ -549,8 +551,8 @@ pub fn sys(
     let center_axis = angle * 0.5 + diff;
     let context = ClipSdf::cacl_context_rect(0., 0., 100., 100., 50., 50., 50., 50.);
     // let clip_sdf = ClipSdf::sector((0.5, 0.5), 0.5, (f32::sin(center_axis / 180. * 3.1415926), f32::cos(center_axis / 180. * 3.1415926)), (f32::sin(angle * 0.5 / 180. * 3.1415926), f32::cos(angle * 0.5 / 180. * 3.1415926)), context);
-    let clip_sdf = ClipSdf::circle((400., 300.), 50., (200., 200., 300., 200.));
-    test.postprocess.clip_sdf = Some(clip_sdf);
+    // let clip_sdf = ClipSdf::circle((400., 300.), 50., (200., 200., 300., 200.));
+    // test.postprocess.clip_sdf = Some(clip_sdf);
 
     test.postprocess.calc(
         16,
@@ -575,8 +577,10 @@ pub fn main() {
     app.add_plugin(AccessibilityPlugin);
     app.add_plugin(bevy::winit::WinitPlugin::default());
     // .add_plugin(WorldInspectorPlugin::new())
+    app.add_plugin(pi_bevy_asset::PiAssetPlugin::default());
     app.add_plugin(PiRenderPlugin::default());
     app.add_plugin(PluginWindowRender);
+    app.world.get_resource_mut::<WindowRenderer>().unwrap().active = true;
     app.add_plugin(PluginTest);
     
     app.run()

@@ -223,8 +223,10 @@ pub trait TImageEffect {
         alpha: f32, depth: f32,
         source: &PostprocessTexture,
         force_nearest_filter: bool,
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> (Buffer, BindGroup) {
-        let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, (source.use_w(), source.use_h()), dst_size);
+        let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
         let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
         let bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {

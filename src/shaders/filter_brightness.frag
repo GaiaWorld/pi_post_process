@@ -14,13 +14,18 @@ layout(set = 0, binding = 0) uniform Param {
 
     float depth;
     float alpha;
-    float wasm0;
-    float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
 layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
+
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
 
 vec3 ApplyBrightnessThreshold (vec3 color, vec4 _BloomThreshold) {
     float brightness = max(color.r, max(color.g, color.b));
@@ -36,9 +41,10 @@ void main() {
     
     vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
-    vec4 c = texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV);
+    vec4 c = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV));
     c.rgb = ApplyBrightnessThreshold(c.rgb, threshold);
 
     gl_FragColor = c;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
 }

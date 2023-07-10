@@ -14,7 +14,8 @@ layout(set = 0, binding = 0) uniform Model {
     
     float depth;
     float alpha;
-    vec2 _wasm_0;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 layout(location = 0) out vec4 uv01;

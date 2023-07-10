@@ -93,7 +93,9 @@ impl super::TEffectForBuffer for HorizonGlitch {
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
         _: (u32, u32),
-        _: (u32, u32)
+        _: (u32, u32),
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
@@ -108,6 +110,11 @@ impl super::TEffectForBuffer for HorizonGlitch {
         temp.push(self.fade);
         temp.push(depth);
         temp.push(alpha);
+
+        if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
+        if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
+        temp.push(0.);
+        temp.push(0.);
 
         device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
             label: None,

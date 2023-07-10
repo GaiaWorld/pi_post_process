@@ -55,6 +55,8 @@ pub trait TEffectForBuffer {
         depth: f32,
         device: &RenderDevice,
         src_size: (u32, u32),
-        dst_size: (u32, u32)
+        dst_size: (u32, u32),
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> Buffer;
 }

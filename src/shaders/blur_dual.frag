@@ -21,30 +21,36 @@ layout(set = 0, binding = 0) uniform Model {
     
     float depth;
     float alpha;
-    vec2 _wasm_0;
+    float src_preimultiplied;
+    float dst_preimultiply;
 };
 
 layout(set = 0, binding = 1) uniform texture2D diffuseTex;
 layout(set = 0, binding = 2) uniform sampler sampler_diffuseTex;
 
+vec4 texColor(vec4 src) {
+    src.rgb /= mix(1., src.a, step(0.5, src_preimultiplied));
+    return src;
+}
+
 vec4 down(vec2 uv) {
-    vec4 color =  texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.xy )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.zw )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.xy )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.zw );
+    vec4 color =  texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.xy ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.zw ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.xy ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.zw ));
 
     return color * 0.25;
 }
 
 vec4 up(vec2 uv) {
-    vec4 color =  texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.xy ) * 2.
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.zw ) * 2.
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.xy ) * 2.
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.zw ) * 2.
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv45.xy )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv45.zw )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv67.xy )
-                + texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv67.zw );
+    vec4 color =  texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.xy )) * 2.
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv01.zw )) * 2.
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.xy )) * 2.
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv23.zw )) * 2.
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv45.xy ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv45.zw ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv67.xy ))
+                + texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), uv + uv67.zw ));
     return color * 0.0833333; // 1/12
 }
 
@@ -57,6 +63,7 @@ void main() {
         gl_FragColor = up(vMainUV);
     }
     
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.rgb *= intensity;
     gl_FragColor.a *= alpha;
 }

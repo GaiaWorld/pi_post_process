@@ -24,6 +24,8 @@ pub fn bloom_dual_render(
     depth_stencil: Option<DepthStencilState>,
     target_type: TargetType,
     target_format: wgpu::TextureFormat,
+    src_premultiplied: bool,
+    dst_premultiply: bool,
 ) -> PostprocessTexture {
 
     let color_state: wgpu::ColorTargetState = create_default_target(target_format);
@@ -43,7 +45,8 @@ pub fn bloom_dual_render(
         (to_w, to_h), &IDENTITY_MATRIX,
         1., 0., &source,
         safeatlas, target_type, pipelines,
-        color_state.clone(), None, false
+        color_state.clone(), None, false,
+        src_premultiplied, false
     ).unwrap();
     let draw = PostProcessDraw::Temp(filterresult.get_rect(), draw, filterresult.view.clone() );
     draw.draw(Some(encoder), None);
@@ -69,6 +72,7 @@ pub fn bloom_dual_render(
                 pipelines,
                 color_state.clone(),
                 None,
+                false, false
             ).unwrap();
 
             tempsource = result.clone();
@@ -100,6 +104,7 @@ pub fn bloom_dual_render(
                 pipelines,
                 color_state_for_add.clone(),
                 None,
+                false, false
             ).unwrap();
 
             let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
@@ -124,7 +129,8 @@ pub fn bloom_dual_render(
                     1., 0.,
                     &tempsource,
                     safeatlas, target_type, pipelines,
-                    color_state_for_add.clone(), depth_stencil, false
+                    color_state_for_add.clone(), depth_stencil, false,
+                    false, false
                 ).unwrap();
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draws.push(draw);
@@ -142,7 +148,8 @@ pub fn bloom_dual_render(
                     1., 0.,
                     &source,
                     safeatlas, target_type, pipelines,
-                    color_state.clone(), None, false
+                    color_state.clone(), None, false,
+                    false, false
                 ).unwrap();
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draw.draw(Some(encoder), None);
@@ -155,7 +162,8 @@ pub fn bloom_dual_render(
                     1., 0.,
                     &tempsource,
                     safeatlas, target_type, pipelines,
-                    color_state_for_add.clone(), depth_stencil, true
+                    color_state_for_add.clone(), depth_stencil, true,
+                    false, dst_premultiply
                 ).unwrap();
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draws.push(draw);

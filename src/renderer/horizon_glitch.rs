@@ -91,7 +91,9 @@ pub fn horizon_glitch_render(
     color_state: wgpu::ColorTargetState,
     _: Option<DepthStencilState>,
     target_type: TargetType,
-    target_format: wgpu::TextureFormat
+    target_format: wgpu::TextureFormat,
+    src_premultiplied: bool,
+    dst_premultiply: bool,
 ) -> PostprocessTexture {
     
     let copyparam = CopyIntensity::default();
@@ -101,7 +103,8 @@ pub fn horizon_glitch_render(
         dst_size, &IDENTITY_MATRIX, 
         1., 0., source,
         safeatlas, target_type, pipelines,
-        color_state.clone(), None, false
+        color_state.clone(), None, false,
+        src_premultiplied, dst_premultiply
     ).unwrap();
     let result = EffectBlurDual::get_target(target, &source, dst_size, safeatlas, target_type, target_format); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
@@ -114,7 +117,8 @@ pub fn horizon_glitch_render(
             dst_size, &IDENTITY_MATRIX,
             1., 0., source,
             safeatlas, target_type, pipelines,
-            color_state.clone(), None
+            color_state.clone(), None,
+            src_premultiplied, dst_premultiply
         ).unwrap();
         let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
         draws.push(draw);

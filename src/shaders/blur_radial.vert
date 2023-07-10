@@ -16,8 +16,10 @@ layout(set = 0, binding = 0) uniform Model {
     float depth;
     float alpha;
 
-    // float wasm0;
-    // float wasm1;
+    float src_preimultiplied;
+    float dst_preimultiply;
+    float _wasm_0;
+    float _wasm_1;
 };
 
 void main() {

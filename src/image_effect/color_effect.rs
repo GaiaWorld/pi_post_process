@@ -49,11 +49,13 @@ impl EffectColorEffect {
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
         force_nearest_filter: bool,
+        src_premultiplied: bool,
+        dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, force_nearest_filter);
+            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, force_nearest_filter, src_premultiplied, dst_premultiply);
 
             // log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 
