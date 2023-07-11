@@ -753,7 +753,7 @@ impl PostProcess {
         let clip_sdf         = self.clip_sdf.is_some();
         let copy_intensity   = self.copy.is_some();
 
-        let mut final_is_multi_render_steps = false;
+        let mut final_is_multi_render_steps = true;
 
         if color_effect {            self.flags.push(EPostprocessRenderType::ColorEffect);
             final_is_multi_render_steps = false;
