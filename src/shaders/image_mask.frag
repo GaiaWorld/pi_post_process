@@ -46,6 +46,6 @@ void main() {
 
 
     gl_FragColor = baseColor;
-    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }

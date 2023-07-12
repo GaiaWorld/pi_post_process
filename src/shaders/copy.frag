@@ -78,7 +78,7 @@ void main() {
     );
     
     gl_FragColor = c;
+    gl_FragColor.a *= alpha;
     gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.rgb *= intensity;
-    gl_FragColor.a *= alpha;
 }

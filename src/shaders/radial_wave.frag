@@ -53,6 +53,6 @@ void main() {
     diff = fade * weight * sin(t * 3.141592653589793);
 
     gl_FragColor = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), fract(vMainUV + diff * diffuseMat.zw)));
-    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }

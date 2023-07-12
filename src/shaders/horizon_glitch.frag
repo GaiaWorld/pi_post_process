@@ -39,6 +39,7 @@ void main() {
     vec4 src3 = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vMainUV + vec2(vGlitch.z * diff_u * 1.5, 0.)));
 
     gl_FragColor = vec4(src1.r, src2.g, src3.b, (src1.a + src2.a + src3.a) * 0.333334);
+    gl_FragColor.a *= alpha;
     gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     // gl_FragColor = vec4(diff_u, diff_u, diff_u, 1.0);
 }

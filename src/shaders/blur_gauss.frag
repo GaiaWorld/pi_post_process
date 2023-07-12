@@ -65,9 +65,9 @@ void main() {
     }
 
     // 输出颜色值
-    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor = avg_color;
     gl_FragColor.a *= alpha;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 
     // gl_FragColor=vec4(0.0, )
 }

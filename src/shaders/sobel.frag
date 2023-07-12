@@ -66,6 +66,6 @@ void main() {
     float g = sqrt(gx * gx + gy * gy);
 
     gl_FragColor = mix(bgColor, color, step(clip, g) * g);
-    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }

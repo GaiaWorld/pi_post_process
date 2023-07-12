@@ -85,7 +85,6 @@ void main() {
     } else {
         gl_FragColor = loop_0(diffuseTex, sampler_diffuseTex, vMainUV);
     }
-    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
     gl_FragColor.a *= alpha;
-
+    gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }
