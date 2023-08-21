@@ -51,12 +51,12 @@ pi_window_renderer      = { version = "0.1", registry = "yn"}
 # pi_render = { path = "../winit" }
 
 # pi_bevy
-pi_bevy_render_plugin = { path="../pi_bevy/crates/render" }
-pi_bevy_winit_window = { path="../pi_bevy/crates/winit_window" }
-pi_bevy_ecs_extend = { path="../pi_bevy/crates/ecs_extend" }
-pi_bevy_asset = { path="../pi_bevy/crates/asset" }
-pi_window_renderer = { path="../pi_bevy/crates/window_renderer" }
-pi_bevy_log = { path="../pi_bevy/crates/log" }
+# pi_bevy_render_plugin = { path="../pi_bevy/crates/render" }
+# pi_bevy_winit_window = { path="../pi_bevy/crates/winit_window" }
+# pi_bevy_ecs_extend = { path="../pi_bevy/crates/ecs_extend" }
+# pi_bevy_asset = { path="../pi_bevy/crates/asset" }
+# pi_window_renderer = { path="../pi_bevy/crates/window_renderer" }
+# pi_bevy_log = { path="../pi_bevy/crates/log" }
 
 [[example]]
 name = "test"
