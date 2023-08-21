@@ -208,6 +208,9 @@ impl Node for RenderNode {
         mut commands: ShareRefCell<wgpu::CommandEncoder>,
         input: &'a Self::Input,
         _: &'a ParamUsage,
+		_id: NodeId,
+		_from: &[NodeId],
+		_to: &[NodeId],
     ) -> BoxFuture<'a, Result<Self::Output, String>> {
         let time = pi_time::Instant::now();
 
@@ -313,7 +316,7 @@ impl Node for RenderNode {
 
         return Box::pin(
             async move {
-                Ok(SimpleInOut { target: None })
+                Ok(SimpleInOut { target: None, valid_rect: None })
             }
         );
     }
@@ -481,7 +484,7 @@ pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &Rend
     let texture_view = diffuse_texture.create_view(
         &wgpu::TextureViewDescriptor::default()
     ); 
-    let key_img = KeyImageTexture::File(key.to_string(), true);
+    let key_img = KeyImageTexture::File(Atom::from(key), true);
     let diffuse_texture = asset_tex.insert(key_img.asset_u64(), TextureRes::new(texture_size.width, texture_size.height, (texture_size.width * texture_size.height * 4) as usize, texture_view, true, wgpu::TextureFormat::Rgba8Unorm)).unwrap();
 
     (diffuse_texture, texture_size)
