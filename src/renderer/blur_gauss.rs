@@ -1,5 +1,4 @@
 
-use std::sync::Arc;
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
@@ -7,7 +6,7 @@ use pi_render::{
         device::RenderDevice, asset::RenderRes, pipeline::RenderPipeline, RenderQueue
     },
     components::view::target_alloc::{SafeAtlasAllocator, TargetType},
-    renderer::{pipeline::DepthStencilState, vertices::{EVerticesBufferUsage, RenderVertices}, vertex_buffer::VertexBufferAllocator}
+    renderer::pipeline::DepthStencilState
 };
 use pi_share::Share;
 

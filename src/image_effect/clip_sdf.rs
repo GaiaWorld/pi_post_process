@@ -1,13 +1,12 @@
 use std::{sync::Arc, ops::Range};
 
-use pi_assets::{mgr::AssetMgr};
-use pi_map::vecmap::VecMap;
+use pi_assets::mgr::AssetMgr;
 use pi_map::smallvecmap::SmallVecMap;
 
 use pi_render::{
     renderer::{
         draw_obj::{DrawObj, DrawBindGroups, DrawBindGroup},
-        pipeline::DepthStencilState, sampler::SamplerRes
+        pipeline::DepthStencilState
     },
     rhi::{
         device::RenderDevice, 
@@ -20,7 +19,7 @@ use pi_share::Share;
 
 use crate::{temprory_render_target::PostprocessTexture, effect::*, material::tools::load_shader};
 
-use super::{base::{TImageEffect, KeyPostprocessPipeline}, SingleImageEffectResource, ImageEffectResource};
+use super::base::{TImageEffect, KeyPostprocessPipeline};
 
 
 pub struct EffectClipSdf {}
@@ -35,12 +34,12 @@ impl EffectClipSdf {
         geo_matrix: &[f32],
         alpha: f32, depth: f32,
         source: &PostprocessTexture,
-        safeatlas: &SafeAtlasAllocator,
-        target_type: TargetType,
+        _safeatlas: &SafeAtlasAllocator,
+        _target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,
-        force_nearest_filter: bool,
+        _force_nearest_filter: bool,
         src_premultiplied: bool,
         dst_premultiply: bool,
     ) -> Option<DrawObj> {

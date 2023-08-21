@@ -1,6 +1,6 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
-use pi_map::{vecmap::VecMap, smallvecmap::SmallVecMap};
+use pi_map::smallvecmap::SmallVecMap;
 use pi_assets::mgr::AssetMgr;
 
 use pi_render::{
@@ -45,8 +45,8 @@ impl EffectHorizonGlitch {
         alpha: f32, depth: f32,
         source: &PostprocessTexture,
         // target: Option<PostprocessTexture>,
-        safeatlas: &SafeAtlasAllocator,
-        target_type: TargetType,
+        _safeatlas: &SafeAtlasAllocator,
+        _target_type: TargetType,
         pipelines: & Share<AssetMgr<RenderRes<RenderPipeline>>>,
         color_state: wgpu::ColorTargetState,
         depth_stencil: Option<DepthStencilState>,

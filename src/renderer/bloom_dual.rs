@@ -84,8 +84,9 @@ pub fn bloom_dual_render(
     }
 
     let blur_dual = BlurDual { radius: bloom_dual.radius, iteration: bloom_dual.iteration, intensity: bloom_dual.intensity, simplified_up: false };
-    let mut temptarget = None;
+    
     if realiter > 0 {
+		let mut temptarget ;
         tempsource = temptargets.pop().unwrap();
         for _ in 0..realiter {
             to_w = to_w * 2;

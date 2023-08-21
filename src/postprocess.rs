@@ -1,16 +1,15 @@
 
 
-use std::{mem::replace, fmt::Debug};
+use std::fmt::Debug;
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
     components::view::target_alloc::{SafeAtlasAllocator, TargetType},
-    rhi::{device::{RenderDevice}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue},
+    rhi::{device::RenderDevice, pipeline::RenderPipeline, asset::RenderRes, RenderQueue},
     renderer::{
         pipeline::DepthStencilState,
         vertex_buffer::VertexBufferAllocator,
         vertices::RenderVertices,
-        texture::*,
         draw_obj::DrawObj
     }
 };
@@ -18,11 +17,11 @@ use pi_share::Share;
 
 use crate::{
     effect::*,
-    temprory_render_target::{PostprocessTexture},
+    temprory_render_target::PostprocessTexture,
     renderer::{ bloom_dual::bloom_dual_render, horizon_glitch::{horizon_glitch_render, horizon_glitch_render_calc}, blur_gauss::blur_gauss_render},
     error::EPostprocessError,
     image_effect::*,
-    material::{create_default_target},
+    material::create_default_target,
     geometry::IDENTITY_MATRIX, postprocess_flags::EPostprocessRenderType, SimpleRenderExtendsData
 };
 
@@ -110,11 +109,11 @@ pub struct TempResult {
     // draw: Option<PostProcessDraw>,
     target: Option<PostprocessTexture>,
 }
-impl TempResult {
-    fn target(&mut self) -> Option<PostprocessTexture> {
-        replace(&mut self.target, None) 
-    }
-}
+// impl TempResult {
+//     fn target(&mut self) -> Option<PostprocessTexture> {
+//         replace(&mut self.target, None) 
+//     }
+// }
 
 /// * 处理渲染逻辑
 ///   * 设置对应效果数据
@@ -681,7 +680,7 @@ impl PostProcess {
             EPostprocessRenderType::HorizonGlitch => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        if let Some(encoder) = encoder {
+                        if let Some(_encoder) = encoder {
                             let result = horizon_glitch_render(
                                 self.horizon_glitch.as_ref().unwrap(),
                                 device, queue, self.horizon_glitch_instance.clone(), matrix,
@@ -701,7 +700,7 @@ impl PostProcess {
             EPostprocessRenderType::BlurGauss => {
                 match target {
                     ETarget::Temp(_, _) => {
-                        if let Some(encoder) = encoder {
+                        if let Some(_encoder) = encoder {
                             let result = blur_gauss_render(
                                 self.blur_gauss.as_ref().unwrap(),
                                 device, queue, matrix,

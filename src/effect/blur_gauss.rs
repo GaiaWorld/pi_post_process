@@ -34,7 +34,7 @@ impl super::TEffectForBuffer for BlurGaussForBuffer {
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
         _: (u32, u32),
-        dst_size: (u32, u32),
+        _dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
     ) -> pi_render::rhi::buffer::Buffer {

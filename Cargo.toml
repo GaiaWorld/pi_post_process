@@ -9,56 +9,54 @@ pollster = "0.2"
 rand = "0.8"
 guillotiere = { version = "0.6" }
 num-traits = "0.2"
-lazy_static = "1.4"
 derive_deref = "1.1"
 log = "0.4"
 env_logger = "0.9"
 smallvec = { version = "1.8", features = ["serde"] }
 bytemuck = { version = "1.4", features = ["derive"] }
-naga = { version = "0.11" }
-wgpu = { version = "0.15", default-features = false, features = ["glsl"] }
+naga = { version = "0.12" }
+wgpu = { version = "0.16", default-features = false, features = ["glsl"] }
 
 pi_hash = "0.1"
 pi_enum_default_macro = "0.1"
 pi_assets = "0.13"
 pi_map = "0.1"
 
-pi_wy_rng = { git = "https://github.com/GaiaWorld/pi_wy_rng.git" }
-pi_render = { git = "https://github.com/GaiaWorld/pi_render", branch = "bevy_shader" }
+pi_wy_rng = "0.1"
+pi_render = { version = "0.1", registry = "yn" }
 
 pi_share = "0.4"
 pi_atom = { version = "0.2", features = ["serde"] }
 
 [dev-dependencies]
-winit = { git = "http://ser.yinengyun.com:10082/tech/winit.git" }
-wgpu = "0.15"
+winit = { version = "0.27", registry = "yn" }
+wgpu = "0.16"
 image = "0.24"
 env_logger = "0.9"
 float-ord = "0.3"
 async-trait = "0.1"
 pi_futures          = "0.1"
 pi_time             = "0.2.6"
-bevy = { version = "0.10" }
-pi_bevy_render_plugin   = { git = "https://github.com/GaiaWorld/pi_render_bevy"}
-pi_bevy_winit_window    = { git = "https://github.com/GaiaWorld/pi_render_bevy"}
-pi_bevy_ecs_extend      = { git = "https://github.com/GaiaWorld/pi_render_bevy"}
-pi_bevy_asset           = { git = "https://github.com/GaiaWorld/pi_render_bevy"}
-pi_window_renderer      = { git = "https://github.com/GaiaWorld/pi_render_bevy"}
-
-# [patch."https://github.com/GaiaWorld/pi_render"]
-# pi_render = { path = "../pi_render" }
+bevy = { version = "0.11" }
+pi_bevy_render_plugin   = { version = "0.1", registry = "yn"}
+pi_bevy_winit_window    = { version = "0.1", registry = "yn"}
+pi_bevy_ecs_extend      = { version = "0.1", registry = "yn"}
+pi_bevy_asset           = { version = "0.1", registry = "yn"}
+pi_window_renderer      = { version = "0.1", registry = "yn"}
 
 
-# [patch."http://ser.yinengyun.com:10082/tech/winit.git"]
+[patch.yn]
+# pi_hal = { path = "../pi_hal" }
 # winit = { path = "../winit" }
+# pi_render = { path = "../winit" }
 
-
-[patch."https://github.com/GaiaWorld/pi_render_bevy"]
-pi_bevy_render_plugin = { path="../pi_render_bevy/crates/render" }
-pi_bevy_winit_window = { path="../pi_render_bevy/crates/winit_window" }
-pi_bevy_ecs_extend = { path="../pi_render_bevy/crates/ecs_extend" }
-pi_bevy_asset = { path="../pi_render_bevy/crates/asset" }
-pi_window_renderer = { path="../pi_render_bevy/crates/window_renderer" }
+# pi_bevy
+pi_bevy_render_plugin = { path="../pi_bevy/crates/render" }
+pi_bevy_winit_window = { path="../pi_bevy/crates/winit_window" }
+pi_bevy_ecs_extend = { path="../pi_bevy/crates/ecs_extend" }
+pi_bevy_asset = { path="../pi_bevy/crates/asset" }
+pi_window_renderer = { path="../pi_bevy/crates/window_renderer" }
+pi_bevy_log = { path="../pi_bevy/crates/log" }
 
 [[example]]
 name = "test"

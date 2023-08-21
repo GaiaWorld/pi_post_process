@@ -1,23 +1,23 @@
-use std::{sync::Arc, };
+use std::sync::Arc;
 
 use pi_assets::{mgr::AssetMgr, asset::Handle};
 use pi_hash::XHashMap;
 use pi_render::{
     renderer::{
-        draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::{VertexBufferAllocator},
+        draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::VertexBufferAllocator,
         sampler::SamplerRes, pipeline::DepthStencilState, texture::*
     },
     rhi::{
         bind_group_layout::BindGroupLayout, device::RenderDevice, buffer::Buffer,
         sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, bind_group::BindGroup, RenderQueue
     },
-    asset::{TAssetKeyU64},
+    asset::TAssetKeyU64,
     components::view::target_alloc::{SafeAtlasAllocator, TargetType}
 };
 use pi_share::Share;
 use wgpu::CommandEncoder;
 
-use crate::{material::{tools::{Shader}, FORMAT}, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
+use crate::{material::tools::Shader, temprory_render_target::PostprocessTexture, effect::TEffectForBuffer};
 
 pub struct ImageEffectResource {
     pub shader: Shader,
