@@ -32,10 +32,10 @@ pub struct EffectColorEffect {
 }
 impl EffectColorEffect {
     pub fn ready(
-        param: ColorEffect,
+        param: &ColorEffectRenderer,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        _: &wgpu::Queue,
+        queue: &pi_render::rhi::RenderQueue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
@@ -55,7 +55,7 @@ impl EffectColorEffect {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, force_nearest_filter, src_premultiplied, dst_premultiply);
+            let bind_group = Self::bind_group(device, queue, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, force_nearest_filter, src_premultiplied, dst_premultiply);
 
             // log::info!(">>>>>>>>>> {:?}: {:?} >> {:?}", Self::KEY, source.get_rect(), target.get_rect());
 

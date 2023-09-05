@@ -1,6 +1,6 @@
 use std::{sync::Arc, ops::Range};
 
-use pi_assets::{mgr::AssetMgr};
+use pi_assets::mgr::AssetMgr;
 use pi_map::smallvecmap::SmallVecMap;
 
 use pi_render::{
@@ -10,7 +10,7 @@ use pi_render::{
     },
     rhi::{
         device::RenderDevice, 
-        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue
     },
     asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN},
     components::view::target_alloc::{SafeAtlasAllocator, TargetType}
@@ -32,10 +32,10 @@ pub struct EffectBlurBokeh {
 }
 impl EffectBlurBokeh {
     pub fn ready(
-        param: BlurBokeh,
+        param: &BlurBokehRenderer,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        _: &wgpu::Queue,
+        queue: &RenderQueue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
@@ -50,7 +50,7 @@ impl EffectBlurBokeh {
         dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false, src_premultiplied, dst_premultiply);
+            let bind_group = Self::bind_group(device, queue, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false, src_premultiplied, dst_premultiply);
 
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 

@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 #[derive(Clone, Copy, Debug)]
 pub struct CopyIntensity {
     /// 拷贝时强度因子
@@ -24,22 +28,33 @@ impl Default for CopyIntensity {
             polygon: 0,
             radius: 1.0,
             angle: 0.0,
-            bg_color: (0, 0, 0, 0)
+            bg_color: (0, 0, 0, 0),
         }
     }
 }
-impl super::TEffectForBuffer for CopyIntensity {
+
+pub struct CopyIntensityRenderer {
+    pub(crate) param: CopyIntensity,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl CopyIntensityRenderer {
+    pub fn new(param: &CopyIntensity, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for CopyIntensityRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -49,25 +64,22 @@ impl super::TEffectForBuffer for CopyIntensity {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
 
-        temp.push(self.intensity);
-        temp.push(self.polygon as f32);
-        temp.push(self.radius);
-        temp.push(self.angle);
+        temp.push(self.param.intensity);
+        temp.push(self.param.polygon as f32);
+        temp.push(self.param.radius);
+        temp.push(self.param.angle);
         
-        temp.push(self.bg_color.0 as f32 / 255.);
-        temp.push(self.bg_color.1 as f32 / 255.);
-        temp.push(self.bg_color.2 as f32 / 255.);
-        temp.push(self.bg_color.3 as f32 / 255.);
+        temp.push(self.param.bg_color.0 as f32 / 255.);
+        temp.push(self.param.bg_color.1 as f32 / 255.);
+        temp.push(self.param.bg_color.2 as f32 / 255.);
+        temp.push(self.param.bg_color.3 as f32 / 255.);
 
         temp.push(depth);
         temp.push(alpha);
         if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
         if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

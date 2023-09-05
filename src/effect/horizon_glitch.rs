@@ -1,6 +1,12 @@
 
+use std::sync::Arc;
+
 use pi_wy_rng::WyRng;
 use rand::{Rng, SeedableRng};
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource, ImageEffectInstanceBufferOffset};
+
+use super::{CopyIntensityRenderer, CopyIntensity};
 
 #[derive(Clone, Debug)]
 /// 水平故障纹
@@ -85,18 +91,39 @@ impl Default for HorizonGlitch {
         Self { max_size: 0.1, min_size: 0.05, max_count: 6, min_count: 2, lifetime: 5000, probability: 0.5, strength: 0.05, fade: 0.05, life: 0, items: Vec::new(), is_up: true }
     }
 }
-impl super::TEffectForBuffer for HorizonGlitch {
+pub struct HorizonGlitchRenderer {
+    /// 故障扭曲强度 - [0, 1]
+    pub(crate) strength: f32,
+    /// 故障边界过渡因子
+    pub(crate) fade: f32,
+    pub(crate) instance: Option<ImageEffectInstanceBufferOffset>,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+    pub(crate) copy: CopyIntensityRenderer,
+}
+impl HorizonGlitchRenderer {
+    pub fn new(param: &HorizonGlitch, resource: &SingleImageEffectResource) -> Self {
+        Self {
+            strength: param.strength,
+            fade: param.fade,
+            uniform: resource.uniform_buffer(),
+            instance: resource.instance_range(),
+            copy: CopyIntensityRenderer::new(&CopyIntensity::default(), resource),
+        }
+    }
+}
+impl super::TEffectForBuffer for HorizonGlitchRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -116,10 +143,7 @@ impl super::TEffectForBuffer for HorizonGlitch {
         temp.push(0.);
         temp.push(0.);
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

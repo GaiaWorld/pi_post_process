@@ -138,7 +138,7 @@ pub use pi_render::{
     render_3d::{
         shader::*,
         bind_groups::{ scene::*, model::*, texture_sampler::* },
-        binds::{ scene::*, model::*, effect_value::*, effect_sampler2d::*, effect_texture2d::*, texture_sampler::* },
+        binds::{ scene::*, model::*, effect_value::*, effect_sampler2d::*, effect_texture2d::* },
     },
     rhi::{
         asset::*,
@@ -166,6 +166,7 @@ pub struct QueryParam<'w> (
     Res<'w, WindowRenderer>,
     Res<'w, PiSafeAtlasAllocator>,
     Res<'w, TestPostprocess>,
+    Res<'w, ResImageEffectResource>,
 );
 
 #[derive(Resource, Deref, DerefMut)]
@@ -176,7 +177,6 @@ pub struct TestPostprocess {
     pub postprocess: PostProcess,
     pub asset_samplers: Share<AssetMgr::<SamplerRes>>,
     pub pipelines: Share<AssetMgr<RenderRes<RenderPipeline>>>,
-    pub resources: SingleImageEffectResource,
     pub value_test: u8,
     pub lasttime: SystemTime,
     pub atlas: SafeAtlasAllocator,
@@ -191,6 +191,9 @@ pub struct TestPostprocess {
 
     pub viewport: (f32, f32, f32, f32),
 }
+
+#[derive(Resource, Deref)]
+pub struct ResImageEffectResource(pub SingleImageEffectResource);
 
 pub struct RenderNode;
 impl Node for RenderNode {
@@ -215,7 +218,7 @@ impl Node for RenderNode {
         let time = pi_time::Instant::now();
 
             let param: QueryParam = param.get(world);
-            let (window, device, queue, final_render_target, atlas_allocator, postprocess) = (param.0, param.1, param.2, param.3, param.4, param.5);
+            let (window, device, queue, final_render_target, atlas_allocator, postprocess, resources) = (param.0, param.1, param.2, param.3, param.4, param.5, param.6);
 
         if let Some(view) = final_render_target.view() {
             let src_texture = PostprocessTexture {
@@ -255,7 +258,7 @@ impl Node for RenderNode {
                 src_texture,
                 (receive_w, receive_h),
                 & postprocess.atlas,
-                &postprocess.resources,
+                &resources,
                 & postprocess.pipelines,
                 postprocess.target_type.clone(),
                 wgpu::TextureFormat::Rgba8Unorm
@@ -276,7 +279,7 @@ impl Node for RenderNode {
                         &postprocess.atlas,
                         &result,
                         (dst.use_w(), dst.use_h()),
-                        &postprocess.resources,
+                        &resources,
                         // &IDENTITY_MATRIX,
                         &postprocess.pipelines,
                         final_targets,
@@ -404,9 +407,9 @@ impl Plugin for PluginTest {
         EffectImageMask::setup(&renderdevice, &mut resources, &asset_samplers);
         EffectClipSdf::setup(&renderdevice, &mut resources, &asset_samplers);
 
+        app.insert_resource(ResImageEffectResource(resources));
         app.insert_resource(TestPostprocess {
             postprocess: PostProcess::default(),
-            resources,
             value_test: 0,
             lasttime: std::time::SystemTime::now(),
             atlas: atlas,
@@ -476,8 +479,8 @@ pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &Rend
         // The layout of the texture
         wgpu::ImageDataLayout {
             offset: 0,
-            bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
-            rows_per_image: std::num::NonZeroU32::new(dimensions.1),
+            bytes_per_row: Some(4 * dimensions.0),
+            rows_per_image: Some(dimensions.1),
         },
         texture_size,
     );
@@ -492,6 +495,7 @@ pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &Rend
 
 pub fn sys(
     mut test: ResMut<TestPostprocess>,
+    resources: Res<ResImageEffectResource>,
     mut vballocator: ResMut<TestVB>,
     renderdevice: Res<PiRenderDevice>,
     queue: Res<PiRenderQueue>,
@@ -561,7 +565,7 @@ pub fn sys(
         16,
         &renderdevice, 
         &queue,
-        &mut vballocator,
+        &resources,
     );
 }
 

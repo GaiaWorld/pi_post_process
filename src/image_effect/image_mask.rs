@@ -25,10 +25,10 @@ use super::{base::{TImageEffect, KeyPostprocessPipeline}, SingleImageEffectResou
 pub struct EffectImageMask {}
 impl EffectImageMask {
     pub fn ready(
-        param: &ImageMask,
+        param: &ImageMaskRenderer,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        _: &wgpu::Queue,
+        queue: &pi_render::rhi::RenderQueue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
@@ -44,9 +44,9 @@ impl EffectImageMask {
         dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let param_buffer = param.buffer(delta_time, geo_matrix, source.get_tilloff(), alpha, depth, device, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
+            let param_buffer = param.buffer(delta_time, geo_matrix, source.get_tilloff(), alpha, depth, device, queue, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
             let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
-            let sampler_mask = if param.nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
+            let sampler_mask = if param.param.nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
             let bind_group = device.create_bind_group(
                 &wgpu::BindGroupDescriptor {
                     label: Some(Self::KEY),
@@ -55,7 +55,7 @@ impl EffectImageMask {
                         wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: &param_buffer, offset: 0, size: None  } )  },
                         wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(source.view())  },
                         wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(sampler)  },
-                        wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(param.image.view())  },
+                        wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(param.param.image.view())  },
                         wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::Sampler(sampler_mask)  },
                     ],
                 }

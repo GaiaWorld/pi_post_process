@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 
 /// 定向模糊
 #[derive(Clone, Copy, Debug)]
@@ -20,19 +24,29 @@ impl BlurDirect {
         self.radius > 0 && self.iteration > 0 && (self.direct_x > 0. || self.direct_y > 0.)
     }
 }
+pub struct BlurDirectRenderer {
+    pub(crate) param: BlurDirect,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl BlurDirectRenderer {
+    pub fn new(param: &BlurDirect, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
 
-impl super::TEffectForBuffer for BlurDirect {
+impl super::TEffectForBuffer for BlurDirectRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -42,20 +56,18 @@ impl super::TEffectForBuffer for BlurDirect {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
         
-        temp.push(self.direct_x);
-        temp.push(self.direct_y);
-        temp.push(self.radius as f32 / dst_size.0 as f32);
-        temp.push(self.iteration as f32);
+        temp.push(self.param.direct_x);
+        temp.push(self.param.direct_y);
+        temp.push(self.param.radius as f32 / dst_size.0 as f32);
+        temp.push(self.param.iteration as f32);
 
         temp.push(depth);
         temp.push(alpha);
         if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
         if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
+
     }
 }

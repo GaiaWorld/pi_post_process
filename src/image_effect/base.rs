@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use crossbeam::queue::SegQueue;
 use pi_assets::{mgr::AssetMgr, asset::Handle};
 use pi_hash::XHashMap;
 use pi_render::{
     renderer::{
-        draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::VertexBufferAllocator,
+        draw_obj::DrawObj, vertices::{RenderVertices, EVerticesBufferUsage}, vertex_buffer::{VertexBufferAllocator, EVertexBufferRange},
         sampler::SamplerRes, pipeline::DepthStencilState, texture::*
     },
     rhi::{
@@ -128,14 +129,61 @@ impl PostProcessDraw {
     }
 }
 
+pub struct ImageEffectUniformBuffer {
+    pub buffer: Buffer,
+    pub pool: Share<SegQueue<Buffer>>,
+}
+impl ImageEffectUniformBuffer {
+    const SIZE: usize = 256;
+    pub fn new(device: &RenderDevice, pool: Share<SegQueue<Buffer>>) -> Self {
+        let buffer = if let Some(buffer) = pool.pop() {
+            buffer
+        } else {
+            let mut data = Vec::with_capacity(Self::SIZE);
+            for _ in 0..Self::SIZE {
+                data.push(0.);
+            }
+            device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
+                label: Some("PostProcessUniform"),
+                contents: bytemuck::cast_slice(&data),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            })
+        };
+        Self { buffer, pool }
+    }
+    pub fn buffer(&self) -> &Buffer {
+        &self.buffer
+    }
+}
+impl Drop for ImageEffectUniformBuffer {
+    fn drop(&mut self) {
+        self.pool.push(self.buffer.clone());
+    }
+}
+
+pub struct ImageEffectInstanceBufferOffset(pub(crate) usize, pub(crate) Share<SegQueue<usize>>);
+impl Drop for ImageEffectInstanceBufferOffset {
+    fn drop(&mut self) {
+        self.1.push(self.0)
+    }
+}
+
 pub struct SingleImageEffectResource {
     // pub(crate) triangle: RenderVertices,
     pub(crate) quad: RenderVertices,
     // pub(crate) triangle_indices: RenderIndices,
     // pub(crate) quad_indices: RenderIndices,
     map: XHashMap<String, Arc<ImageEffectResource>>,
+    pub uniforms: Share<SegQueue<Buffer>>,
+    pub(crate) device: RenderDevice,
+    pub(crate) queue: RenderQueue,
+    pub(crate) instancebuffer: Arc<EVertexBufferRange>,
+    pub(crate) instancebufferranges: Share<SegQueue<usize>>,
 }
+
 impl SingleImageEffectResource {
+    pub const MAX_INSTANCE_RANGE_COUNT: usize = 16;
+    pub const INSTANCE_RANGE_SIZE: usize = 2048;
     pub fn new(device: &RenderDevice, queue: &RenderQueue, vballocator: &mut VertexBufferAllocator) -> Self {
         // let vertices: [f32; 6] = [-0.5, -0.5, 1.5, -0.5, -0.5, 1.5];
         // let key = KeyVertexBuffer::from("ImageEffectTriangle");
@@ -171,12 +219,41 @@ impl SingleImageEffectResource {
         //     format: wgpu::IndexFormat::Uint16,
         // };
 
+        let bytes = Self::INSTANCE_RANGE_SIZE * Self::MAX_INSTANCE_RANGE_COUNT;
+        let mut data = Vec::with_capacity(bytes);
+        for _ in 0..bytes {
+            data.push(0);
+        }
+        let instancebuffer = vballocator.create_not_updatable_buffer(device, queue, &data, None).unwrap();
+
+        let instancebufferranges = Share::new(SegQueue::default());
+        for idx in 0..Self::MAX_INSTANCE_RANGE_COUNT {
+            instancebufferranges.push(idx * Self::INSTANCE_RANGE_SIZE);
+        }
+
         Self {
             // triangle,
             quad,
             // triangle_indices,
             // quad_indices,
             map: XHashMap::default(),
+            uniforms: Share::new(SegQueue::new()),
+            device: device.clone(),
+            queue: queue.clone(),
+            instancebuffer: Arc::new(instancebuffer),
+            instancebufferranges
+        }
+    }
+    pub fn uniform_buffer(&self) -> Arc<ImageEffectUniformBuffer> {
+        Arc::new(ImageEffectUniformBuffer::new(&self.device, self.uniforms.clone()))
+    }
+    pub fn instance_range(&self) -> Option<ImageEffectInstanceBufferOffset> {
+        if let Some(offset) = self.instancebufferranges.pop() {
+            Some(
+                ImageEffectInstanceBufferOffset(offset, self.instancebufferranges.clone())
+            )
+        } else {
+            None
         }
     }
     pub fn regist(
@@ -214,6 +291,7 @@ pub trait TImageEffect {
     const KEY: &'static str;
     fn bind_group<P: TEffectForBuffer>(
         device: &RenderDevice,
+        queue: &RenderQueue,
         param: &P,
         resource: &ImageEffectResource,
         delta_time: u64,
@@ -225,8 +303,8 @@ pub trait TImageEffect {
         force_nearest_filter: bool,
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> (Buffer, BindGroup) {
-        let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
+    ) -> BindGroup {
+        let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, queue, (source.use_w(), source.use_h()), dst_size, src_premultiplied, dst_premultiply);
         let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
         let bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
@@ -239,7 +317,7 @@ pub trait TImageEffect {
                 ],
             }
         );
-        (param_buffer, bind_group)
+        bind_group
     }
     fn shader(device: &RenderDevice) -> Shader;
     fn pipeline(

@@ -1,5 +1,5 @@
 
-use std::sync::Arc;
+use std::{sync::Arc, ops::Range};
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
@@ -7,21 +7,22 @@ use pi_render::{
         device::RenderDevice, asset::RenderRes, pipeline::RenderPipeline, RenderQueue
     },
     components::view::target_alloc::{SafeAtlasAllocator, TargetType},
-    renderer::{pipeline::DepthStencilState, vertices::{EVerticesBufferUsage, RenderVertices}, vertex_buffer::VertexBufferAllocator}
+    renderer::{pipeline::DepthStencilState, vertices::{EVerticesBufferUsage, RenderVertices}}
 };
 use pi_share::Share;
 
 use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect::*, IDENTITY_MATRIX};
 
-const MAX_INSTANCE_COUNT: usize = 200;
+const MAX_INSTANCE_COUNT: usize = SingleImageEffectResource::INSTANCE_RANGE_SIZE / (4 * 4);
 
 pub fn horizon_glitch_render_calc(
-    param: &HorizonGlitch,
+    base: &HorizonGlitch,
+    param: &HorizonGlitchRenderer,
     renderdevice: &RenderDevice,
     queue: & RenderQueue,
-    vballocator: &mut VertexBufferAllocator,
+    resources: &SingleImageEffectResource,
 ) -> Option<RenderVertices> {
-    let items = param.get_items();
+    let items = base.get_items();
     let count = items.len();
 
     let mut instance_data: Vec<f32> = Vec::new();
@@ -60,24 +61,28 @@ pub fn horizon_glitch_render_calc(
     }
 
     if instance_count > 0 {
-        let data = bytemuck::cast_slice(&instance_data);
-        let buffer = vballocator.create_not_updatable_buffer(renderdevice, queue, data, None).unwrap();
-        let buffer = EVerticesBufferUsage::EVBRange(Arc::new(buffer));
-        let instance = RenderVertices {
-            slot: 1,
-            buffer,
-            buffer_range: None,
-            size_per_value: 16,
-        };
-
-        Some(instance)
+        if let Some(offset) = &param.instance {
+            let data = bytemuck::cast_slice(&instance_data);
+            queue.write_buffer(resources.instancebuffer.buffer(), offset.0 as u64, data);
+            let buffer = EVerticesBufferUsage::EVBRange(resources.instancebuffer.clone());
+            let instance = RenderVertices {
+                slot: 1,
+                buffer,
+                buffer_range: Some(Range { start: offset.0 as u64, end: data.len() as u64 }),
+                size_per_value: 16,
+            };
+    
+            Some(instance)
+        } else {
+            None
+        }
     } else {
         None
     }
 }
  
 pub fn horizon_glitch_render(
-    param: &HorizonGlitch,
+    param: &HorizonGlitchRenderer,
     renderdevice: &RenderDevice,
     queue: & RenderQueue,
     instances: Option<RenderVertices>,
@@ -95,11 +100,9 @@ pub fn horizon_glitch_render(
     src_premultiplied: bool,
     dst_premultiply: bool,
 ) -> PostprocessTexture {
-    
-    let copyparam = CopyIntensity::default();
     let dst_size = (source.use_w(), source.use_h());
     let draw = EffectCopy::ready(
-        copyparam, resources, renderdevice, queue, 0,
+        &param.copy, resources, renderdevice, queue, 0,
         dst_size, &IDENTITY_MATRIX, 
         1., 0., source,
         safeatlas, target_type, pipelines,
@@ -113,7 +116,7 @@ pub fn horizon_glitch_render(
     if let Some(instances) = instances {
         let dst_size = (result.use_w(), result.use_h());
         let draw = EffectHorizonGlitch::ready(
-            param.clone(), instances, resources, renderdevice, queue, 0,
+            param, instances, resources, renderdevice, queue, 0,
             dst_size, &IDENTITY_MATRIX,
             1., 0., source,
             safeatlas, target_type, pipelines,
@@ -122,7 +125,6 @@ pub fn horizon_glitch_render(
         ).unwrap();
         let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
         draws.push(draw);
-    
         result
     } else {
         result

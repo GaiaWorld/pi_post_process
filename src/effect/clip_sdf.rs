@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 
 ///
 /// * 前置条件 DIV 节点通过设置 裁剪参数可对内容进行裁剪
@@ -45,12 +49,15 @@ impl ClipSdf {
         border_radius_y: &[f32; 4],
         context_rect: (f32, f32, f32, f32)
     ) -> Self {
-        Self { mode: 4., data: [
-            center.0, center.1, width / 2., height / 2.,
-            context_rect.0, context_rect.1, context_rect.2, context_rect.3,
-            border_radius_y[0], border_radius_x[0], border_radius_x[1], border_radius_y[1],
-            border_radius_y[2], border_radius_x[2], border_radius_x[3], border_radius_y[3],
-        ] }
+        Self {
+            mode: 4.,
+            data: [
+                center.0, center.1, width / 2., height / 2.,
+                context_rect.0, context_rect.1, context_rect.2, context_rect.3,
+                border_radius_y[0], border_radius_x[0], border_radius_x[1], border_radius_y[1],
+                border_radius_y[2], border_radius_x[2], border_radius_x[3], border_radius_y[3],
+            ]
+        }
     }
     /// * UI 坐标系 由左到右, 由上到下
     /// * center 中心点
@@ -59,12 +66,15 @@ impl ClipSdf {
     /// * 弧度的一半 的 sin cos 
     /// * context_rect 内容 在 节点矩形范围的相对矩形范围 (width, height, left, top)
     pub fn sector(center: (f32, f32), radius: f32, central_axis_sincos: (f32, f32), half_radian_sincos: (f32, f32), context_rect: (f32, f32, f32, f32)) -> Self {
-        Self { mode: 3., data: [
-            center.0, center.1, radius, 0.,
-            context_rect.0, context_rect.1, context_rect.2, context_rect.3,
-            central_axis_sincos.0, central_axis_sincos.1, half_radian_sincos.0, half_radian_sincos.1,
-            0., 0., 0., 0.,
-        ] }
+        Self {
+            mode: 3.,
+            data: [
+                center.0, center.1, radius, 0.,
+                context_rect.0, context_rect.1, context_rect.2, context_rect.3,
+                central_axis_sincos.0, central_axis_sincos.1, half_radian_sincos.0, half_radian_sincos.1,
+                0., 0., 0., 0.,
+            ]
+        }
     }
     /// * UI 坐标系 由左到右, 由上到下
     /// * center 中心点
@@ -131,19 +141,28 @@ impl ClipSdf {
         true
     }
 }
-
-impl super::TEffectForBuffer for ClipSdf {
+pub struct ClipSdfRenderer {
+    pub(crate) param: ClipSdf,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl ClipSdfRenderer {
+    pub fn new(param: &ClipSdf, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for ClipSdfRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![];
         geo_matrix.iter().for_each(|v| { temp.push(*v) });
         temp.push(tex_matrix.0);
@@ -151,9 +170,9 @@ impl super::TEffectForBuffer for ClipSdf {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
         
-        self.data.iter().for_each(|v| { temp.push(*v) });
+        self.param.data.iter().for_each(|v| { temp.push(*v) });
 
-        temp.push(self.mode);
+        temp.push(self.param.mode);
         temp.push(depth);
         temp.push(alpha);
         if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
@@ -163,10 +182,7 @@ impl super::TEffectForBuffer for ClipSdf {
         temp.push(0.);
         temp.push(0.);
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

@@ -1,3 +1,4 @@
+use crossbeam::queue::SegQueue;
 use pi_render::rhi::{device::RenderDevice, buffer::Buffer};
 
 
@@ -38,12 +39,15 @@ pub use hsb::*;
 pub use blur_radial::*;
 pub use filter_sobel::*;
 pub use filter_brightness::*;
+use pi_share::Share;
 pub use radial_wave::*;
 pub use vignette::*;
 pub use horizon_glitch::*;
 pub use color_effect::*;
 pub use image_mask::*;
 pub use clip_sdf::*;
+
+use crate::prelude::*;
 
 pub trait TEffectForBuffer {
     fn buffer(
@@ -54,9 +58,10 @@ pub trait TEffectForBuffer {
         alpha: f32,
         depth: f32,
         device: &RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         src_size: (u32, u32),
         dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> Buffer;
+    ) -> &Buffer;
 }

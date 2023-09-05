@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 #[derive(Clone, Copy, Debug)]
 pub struct FilterBrightness {
     /// 检测阈值
@@ -20,18 +24,28 @@ impl Default for FilterBrightness {
         }
     }
 }
-impl super::TEffectForBuffer for FilterBrightness {
+pub struct FilterBrightnessRenderer {
+    pub(crate) param: FilterBrightness,
+    pub uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl FilterBrightnessRenderer {
+    pub fn new(param: &FilterBrightness, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for FilterBrightnessRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -41,8 +55,8 @@ impl super::TEffectForBuffer for FilterBrightness {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
 
-        let threshold_x = f32::powf(self.threshold, 2.2);
-        let mut threshold_y = threshold_x * self.threshold_knee;
+        let threshold_x = f32::powf(self.param.threshold, 2.2);
+        let mut threshold_y = threshold_x * self.param.threshold_knee;
         let threshold_z = 2. * threshold_y;
         let threshold_w = 0.25 / (threshold_y + 0.00001);
         threshold_y -= threshold_x;
@@ -57,10 +71,7 @@ impl super::TEffectForBuffer for FilterBrightness {
         if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
         if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

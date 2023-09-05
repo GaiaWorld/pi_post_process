@@ -1,4 +1,6 @@
-use crate::prelude::PostprocessTexture;
+use std::sync::Arc;
+
+use crate::prelude::{PostprocessTexture, ImageEffectUniformBuffer, SingleImageEffectResource};
 
 #[derive(Clone, Copy, Debug)]
 pub enum EMaskMode {
@@ -26,8 +28,16 @@ impl ImageMask {
         }
     }
 }
-
-impl super::TEffectForBuffer for ImageMask {
+pub struct ImageMaskRenderer {
+    pub(crate) param: ImageMask,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl ImageMaskRenderer {
+    pub fn new(param: &ImageMask, resources: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resources.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for ImageMaskRenderer {
     fn buffer(
         &self, 
         _: u64,
@@ -35,11 +45,12 @@ impl super::TEffectForBuffer for ImageMask {
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![];
         geo_matrix.iter().for_each(|v| { temp.push(*v) });
         temp.push(tex_matrix.0);
@@ -47,14 +58,14 @@ impl super::TEffectForBuffer for ImageMask {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
 
-        let mask_matrix = self.image.get_tilloff();
+        let mask_matrix = self.param.image.get_tilloff();
         temp.push(mask_matrix.0);
         temp.push(mask_matrix.1);
         temp.push(mask_matrix.2);
         temp.push(mask_matrix.3);
 
-        temp.push(self.factor);
-        match self.mode {
+        temp.push(self.param.factor);
+        match self.param.mode {
             EMaskMode::Clip => temp.push(0.),
             EMaskMode::ClipAndMultiplyAlpha => temp.push(1.),
         }
@@ -66,10 +77,7 @@ impl super::TEffectForBuffer for ImageMask {
         temp.push(0.);
         temp.push(0.);
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

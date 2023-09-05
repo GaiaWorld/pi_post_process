@@ -1,26 +1,32 @@
+use std::sync::Arc;
+
+use crate::prelude::ImageEffectUniformBuffer;
+
 use super::{color_filter::ColorFilter, color_balance::ColorBalance, color_scale::ColorScale, hsb::HSB, vignette::Vignette};
 
 
-pub struct ColorEffect {
+pub struct ColorEffectRenderer {
     pub(crate) hsb: Option<HSB>,
     pub(crate) balance: Option<ColorBalance>,
     pub(crate) vignette: Option<Vignette>,
     pub(crate) scale: Option<ColorScale>,
     pub(crate) filter: Option<ColorFilter>,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
 }
 
-impl super::TEffectForBuffer for ColorEffect {
+impl super::TEffectForBuffer for ColorEffectRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         _: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -45,11 +51,8 @@ impl super::TEffectForBuffer for ColorEffect {
         temp.push(0.);
         temp.push(0.);
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }
 

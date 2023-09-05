@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 #[derive(Clone, Copy, Debug)]
 pub struct FilterSobel {
     /// 检测范围 - 像素数目
@@ -26,18 +30,29 @@ impl Default for FilterSobel {
         }
     }
 }
-impl super::TEffectForBuffer for FilterSobel {
+
+pub struct FilterSobelRenderer {
+    pub(crate) param: FilterSobel,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl FilterSobelRenderer {
+    pub fn new(param: &FilterSobel, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for FilterSobelRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -47,19 +62,19 @@ impl super::TEffectForBuffer for FilterSobel {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
 
-        temp.push(self.color.0 as f32 / 255.0);
-        temp.push(self.color.1 as f32 / 255.0);
-        temp.push(self.color.2 as f32 / 255.0);
-        temp.push(self.color.3 as f32 / 255.0);
+        temp.push(self.param.color.0 as f32 / 255.0);
+        temp.push(self.param.color.1 as f32 / 255.0);
+        temp.push(self.param.color.2 as f32 / 255.0);
+        temp.push(self.param.color.3 as f32 / 255.0);
 
-        temp.push(self.bg_color.0 as f32 / 255.0);
-        temp.push(self.bg_color.1 as f32 / 255.0);
-        temp.push(self.bg_color.2 as f32 / 255.0);
-        temp.push(self.bg_color.3 as f32 / 255.0);
+        temp.push(self.param.bg_color.0 as f32 / 255.0);
+        temp.push(self.param.bg_color.1 as f32 / 255.0);
+        temp.push(self.param.bg_color.2 as f32 / 255.0);
+        temp.push(self.param.bg_color.3 as f32 / 255.0);
 
-        temp.push(self.size as f32 / dst_size.0 as f32);
-        temp.push(self.size as f32 / dst_size.1 as f32);
-        temp.push(self.clip);
+        temp.push(self.param.size as f32 / dst_size.0 as f32);
+        temp.push(self.param.size as f32 / dst_size.1 as f32);
+        temp.push(self.param.clip);
         temp.push(depth);
 
         temp.push(alpha);
@@ -67,11 +82,7 @@ impl super::TEffectForBuffer for FilterSobel {
         if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
         temp.push(0.);
 
-
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

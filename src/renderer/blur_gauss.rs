@@ -14,7 +14,8 @@ use crate::{effect::*, temprory_render_target::PostprocessTexture, image_effect:
 
 
 pub fn blur_gauss_render(
-    param: &BlurGauss,
+    hparam: &BlurGaussRenderer,
+    vparam: &BlurGaussRenderer,
     renderdevice: &RenderDevice,
     queue: & RenderQueue,
     _: &[f32],
@@ -32,9 +33,9 @@ pub fn blur_gauss_render(
     dst_premultiply: bool,
 ) -> PostprocessTexture {
     let dst_size = (source.use_w(), source.use_h());
-    let mut drawparam = BlurGaussForBuffer { param: param.clone(), ishorizon: true, texwidth: source.width(), texheight: source.height() };
+    // let mut drawparam = BlurGaussRenderer { param: param.clone(), ishorizon: true, texwidth: source.width(), texheight: source.height() };
     let draw = EffectBlurGauss::ready(
-        &drawparam , 
+        &hparam , 
         resources, renderdevice, queue, 0,
         dst_size, &IDENTITY_MATRIX, 
         1., 0., source,
@@ -45,12 +46,10 @@ pub fn blur_gauss_render(
     let result = EffectBlurDual::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
-
-    drawparam.ishorizon = false;
     
     let dst_size = (result.use_w(), result.use_h());
     let draw = EffectBlurGauss::ready(
-        &drawparam , 
+        &vparam , 
         resources, renderdevice, queue, 0,
         dst_size, &IDENTITY_MATRIX, 
         1., 0., &result,

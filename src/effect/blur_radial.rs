@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 #[derive(Clone, Copy, Debug)]
 /// 径向模糊
 pub struct BlurRadial {
@@ -23,18 +27,28 @@ impl BlurRadial {
         self.radius > 0 && self.iteration > 0 && ((self.start - self.center_x).abs() < 3. && (self.start - self.center_y).abs() < 3.)
     }
 }
-impl super::TEffectForBuffer for BlurRadial {
+pub struct BlurRadialRenderer {
+    pub(crate) param: BlurRadial,
+    pub(crate) uniform: Arc<ImageEffectUniformBuffer>,
+}
+impl BlurRadialRenderer {
+    pub fn new(param: &BlurRadial, resource: &SingleImageEffectResource) -> Self {
+        Self { param: param.clone(), uniform: resource.uniform_buffer() }
+    }
+}
+impl super::TEffectForBuffer for BlurRadialRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -44,13 +58,13 @@ impl super::TEffectForBuffer for BlurRadial {
         temp.push(tex_matrix.2);
         temp.push(tex_matrix.3);
 
-        temp.push(self.center_x);
-        temp.push(self.center_y);
-        temp.push(self.radius as f32 / dst_size.0 as f32);
-        temp.push(self.iteration as f32);
+        temp.push(self.param.center_x);
+        temp.push(self.param.center_y);
+        temp.push(self.param.radius as f32 / dst_size.0 as f32);
+        temp.push(self.param.iteration as f32);
 
-        temp.push(self.start);
-        temp.push(self.fade);
+        temp.push(self.param.start);
+        temp.push(self.param.fade);
         temp.push(depth);
         temp.push(alpha);
 
@@ -59,10 +73,7 @@ impl super::TEffectForBuffer for BlurRadial {
         temp.push(0.);
         temp.push(0.);
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }

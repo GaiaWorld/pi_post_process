@@ -32,10 +32,10 @@ pub struct EffectBlurRadial {
 }
 impl EffectBlurRadial {
     pub fn ready(
-        param: BlurRadial,
+        param: &BlurRadialRenderer,
         resources: & super::base::SingleImageEffectResource,
         device: &RenderDevice,
-        _: &wgpu::Queue,
+        queue: &pi_render::rhi::RenderQueue,
         delta_time: u64,
         dst_size: (u32, u32),
         geo_matrix: &[f32],
@@ -52,7 +52,7 @@ impl EffectBlurRadial {
         dst_premultiply: bool,
     ) -> Option<DrawObj> {
         if let Some(resource) = resources.get(&String::from(Self::KEY)) {
-            let (_, bind_group) = Self::bind_group(device, &param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false, src_premultiplied, dst_premultiply);
+            let bind_group = Self::bind_group(device, queue, param, &resource, delta_time, dst_size, geo_matrix, source.get_tilloff(), alpha, depth, source, false, src_premultiplied, dst_premultiply);
 
             // let target = Self::get_target(target, &source, dst_size, safeatlas, target_type);
 

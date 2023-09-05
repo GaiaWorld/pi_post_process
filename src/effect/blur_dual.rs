@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use crate::prelude::{ImageEffectUniformBuffer, SingleImageEffectResource};
+
 /// Dual 模糊
 #[derive(Clone, Copy, Debug)]
 pub struct BlurDual {
@@ -25,23 +29,62 @@ impl BlurDual {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct BlurDualForBuffer {
+pub struct BlurDualRendererList {
+    pub(crate) iteration: usize,
+    pub(crate) downs: Vec<BlurDualRenderer>,
+    pub(crate) ups: Vec<BlurDualRenderer>,
+}
+impl BlurDualRendererList {
+    pub const MAX_LEVEL: usize = 4;
+    pub fn new(base: &BlurDual, resources: &SingleImageEffectResource) -> Self {
+        let blur_dual = BlurDual { radius: base.radius, iteration: base.iteration, intensity: 1., simplified_up: false };
+        let blur_dual_up = BlurDual { radius: base.radius, iteration: base.iteration, intensity: base.intensity, simplified_up: true };
+
+        let mut downs = vec![];
+        let mut ups = vec![];
+        for _ in 0..Self::MAX_LEVEL {
+            downs.push(BlurDualRenderer { param: blur_dual.clone(), isup: false, uniform: resources.uniform_buffer() });
+            ups.push(BlurDualRenderer { param: blur_dual_up.clone(), isup: true, uniform: resources.uniform_buffer() });
+        }
+
+        Self { 
+            iteration: Self::MAX_LEVEL.min(base.iteration as usize),
+            downs, ups
+        }
+    }
+    pub fn update(&mut self, base: &BlurDual) {
+        let blur_dual = BlurDual { radius: base.radius, iteration: base.iteration, intensity: 1., simplified_up: false };
+        let blur_dual_up = BlurDual { radius: base.radius, iteration: base.iteration, intensity: base.intensity, simplified_up: true };
+
+        self.iteration = Self::MAX_LEVEL.min(base.iteration as usize);
+        self.downs.iter_mut().for_each(|item| {
+            item.param = blur_dual.clone();
+        });
+        self.ups.iter_mut().for_each(|item| {
+            item.param = blur_dual_up.clone();
+        });
+    }
+}
+
+#[derive(Clone)]
+pub struct BlurDualRenderer {
     pub(crate) param: BlurDual,
     pub(crate) isup: bool,
+    pub uniform: Arc<ImageEffectUniformBuffer>,
 }
-impl super::TEffectForBuffer for BlurDualForBuffer {
+impl super::TEffectForBuffer for BlurDualRenderer {
     fn buffer(&self, 
         _: u64,
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
         device: &pi_render::rhi::device::RenderDevice,
+        queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         dst_size: (u32, u32),
         src_premultiplied: bool,
         dst_premultiply: bool,
-    ) -> pi_render::rhi::buffer::Buffer {
+    ) -> &pi_render::rhi::buffer::Buffer {
         let mut temp = vec![
 
         ];
@@ -61,10 +104,7 @@ impl super::TEffectForBuffer for BlurDualForBuffer {
         if src_premultiplied { temp.push(1.); } else { temp.push(0.); }
         if dst_premultiply { temp.push(1.); } else { temp.push(0.); }
 
-        device.create_buffer_with_data(&pi_render::rhi::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&temp),
-            usage: wgpu::BufferUsages::UNIFORM,
-        })
+        queue.write_buffer(self.uniform.buffer(), 0, bytemuck::cast_slice(&temp));
+        self.uniform.buffer()
     }
 }
