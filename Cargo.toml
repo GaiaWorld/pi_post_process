@@ -1,6 +1,6 @@
 [package]
 name = "pi_postprocess"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["bp0002 <bp950722@outlook.com>"]
 edition = "2021"
 
@@ -15,7 +15,7 @@ env_logger              = "0.9"
 smallvec                = { version = "1.8", features = ["serde"] }
 bytemuck                = { version = "1.4", features = ["derive"] }
 naga                    = { version = "0.12" }
-wgpu                    = { version = "0.16", default-features = false, features = ["glsl"] }
+wgpu = {version = "0.1", registry = "yn", package="pi_wgpu"}
 
 crossbeam               = "0.8"
 pi_hash                 = "0.1"
@@ -29,7 +29,7 @@ pi_atom                 = { version = "0.2", features = ["serde"] }
 
 [dev-dependencies]
 winit                   = { version = "0.27", registry = "yn" }
-wgpu                    = "0.16"
+wgpu = {version = "0.1", registry = "yn", package="pi_wgpu", features=["wgpu"]}
 image                   = "0.24"
 env_logger              = "0.9"
 float-ord               = "0.3"
