@@ -10,7 +10,7 @@ use pi_render::{
     },
     rhi::{
         device::RenderDevice, 
-        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue, bind_group::BindGroup
     },
     asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN},
     components::view::target_alloc::{SafeAtlasAllocator, TargetType}
@@ -19,7 +19,7 @@ use pi_share::Share;
 
 use crate::{material::tools::load_shader, temprory_render_target::PostprocessTexture, effect::*};
 
-use super::base::{TImageEffect, KeyPostprocessPipeline};
+use super::{base::{TImageEffect, KeyPostprocessPipeline}, ImageEffectResource};
 
 
 pub struct EffectBlurGauss {}
@@ -109,6 +109,37 @@ impl TImageEffect for EffectBlurGauss {
             "blur_gauss",
             "blur_gauss"
         )
+    }
+
+    fn bind_group<P: TEffectForBuffer>(
+        device: &RenderDevice,
+        queue: &RenderQueue,
+        param: &P,
+        resource: &ImageEffectResource,
+        delta_time: u64,
+        dst_size: (u32, u32),
+        geo_matrix: &[f32],
+        tex_matrix: (f32, f32, f32, f32),
+        alpha: f32, depth: f32,
+        source: &PostprocessTexture,
+        force_nearest_filter: bool,
+        src_premultiplied: bool,
+        dst_premultiply: bool,
+    ) -> BindGroup {
+        let param_buffer = param.buffer(delta_time, geo_matrix, tex_matrix, alpha, depth, device, queue, (source.width(), source.height()), dst_size, src_premultiplied, dst_premultiply);
+        let sampler = if force_nearest_filter { &resource.sampler_nearest.0 } else { &resource.sampler.0 };
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                label: Some(Self::KEY),
+                layout: &resource.bindgroup_layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: &param_buffer, offset: 0, size: None  } )  },
+                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(source.view())  },
+                    wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Sampler(sampler)  },
+                ],
+            }
+        );
+        bind_group
     }
 
     fn pipeline(
