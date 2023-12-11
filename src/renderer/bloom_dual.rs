@@ -13,7 +13,7 @@ pub fn bloom_dual_render(
     bloom_dual: &BloomDualRenderer,
     renderdevice: &RenderDevice,
     queue: &RenderQueue,
-    encoder: &mut wgpu::CommandEncoder,
+    // encoder: &mut wgpu::CommandEncoder,
     matrix: &[f32],
     _: SimpleRenderExtendsData,
     safeatlas: &SafeAtlasAllocator,
@@ -46,7 +46,8 @@ pub fn bloom_dual_render(
         src_premultiplied, false
     ).unwrap();
     let draw = PostProcessDraw::Temp(filterresult.get_rect(), draw, filterresult.view.clone() );
-    draw.draw(Some(encoder), None);
+    // draw.draw(Some(encoder), None);
+    draws.push(draw);
 
     let mut realiter = 0;
     let mut temptargets = vec![];
@@ -75,7 +76,8 @@ pub fn bloom_dual_render(
             tempsource = result.clone();
 
             let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
-            draw.draw(Some(encoder), None);
+            // draw.draw(Some(encoder), None);
+            draws.push(draw);
             temptargets.push(result);
         }
     }
@@ -107,7 +109,8 @@ pub fn bloom_dual_render(
 
             let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
             tempsource = result;
-            draw.draw(Some(encoder), None);
+            // draw.draw(Some(encoder), None);
+            draws.push(draw);
         }
     }
 
@@ -148,7 +151,8 @@ pub fn bloom_dual_render(
                     false, false
                 ).unwrap();
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
-                draw.draw(Some(encoder), None);
+                // draw.draw(Some(encoder), None);
+                draws.push(draw);
 
                 let draw = EffectCopy::ready(
                     &bloom_dual.copy_intensity, resources,
@@ -161,6 +165,7 @@ pub fn bloom_dual_render(
                     false, dst_premultiply
                 ).unwrap();
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
+                // draws.push(draw);
                 draws.push(draw);
 
                 return result;

@@ -1,5 +1,5 @@
 
-use std::{sync::Arc, ops::Range};
+use std::ops::Range;
 
 use pi_assets::mgr::AssetMgr;
 use pi_render::{
@@ -18,7 +18,7 @@ const MAX_INSTANCE_COUNT: usize = SingleImageEffectResource::INSTANCE_RANGE_SIZE
 pub fn horizon_glitch_render_calc(
     base: &HorizonGlitch,
     param: &HorizonGlitchRenderer,
-    renderdevice: &RenderDevice,
+    _renderdevice: &RenderDevice,
     queue: & RenderQueue,
     resources: &SingleImageEffectResource,
 ) -> Option<RenderVertices> {

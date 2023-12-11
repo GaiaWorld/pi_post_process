@@ -176,7 +176,6 @@ pub struct SingleImageEffectResource {
     map: XHashMap<String, Arc<ImageEffectResource>>,
     pub uniforms: Share<SegQueue<Buffer>>,
     pub(crate) device: RenderDevice,
-    pub(crate) queue: RenderQueue,
     pub(crate) instancebuffer: Arc<EVertexBufferRange>,
     pub(crate) instancebufferranges: Share<SegQueue<usize>>,
 }
@@ -239,7 +238,6 @@ impl SingleImageEffectResource {
             map: XHashMap::default(),
             uniforms: Share::new(SegQueue::new()),
             device: device.clone(),
-            queue: queue.clone(),
             instancebuffer: Arc::new(instancebuffer),
             instancebufferranges
         }

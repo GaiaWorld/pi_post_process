@@ -1,105 +1,16 @@
-// mod renderer;
 
-// use renderer::renderer::State;
-// use winit::{
-//     event::*,
-//     event_loop::{ ControlFlow, EventLoop },
-//     window::{WindowBuilder, Window},
-// };
-
-// pub fn window_setup() -> (EventLoop<()>, Window) {
-//     let event_loop = EventLoop::new();
-
-//     let window = WindowBuilder::new().build(&event_loop).unwrap();
-
-//     (event_loop, window)
-// }
-
-// pub async fn run() {
-
-//     let (event_loop, window) = window_setup();
-
-//     let mut state = State::new(&window).await;
-    
-//     event_loop.run(
-//         move | event, _, control_flow | match event {
-//             Event::NewEvents(_) => {},
-//             Event::WindowEvent { window_id, event } => {
-//                 if window_id == window.id() {
-//                     if !state.input(&event) {
-//                         match event {
-//                             WindowEvent::CloseRequested => {
-//                                 *control_flow = ControlFlow::Exit;
-//                             },
-//                             WindowEvent::KeyboardInput {
-//                                 input: KeyboardInput {
-//                                     state: ElementState::Pressed,
-//                                     virtual_keycode: Some(VirtualKeyCode::Escape),
-//                                     ..
-//                                 },
-//                                 ..
-//                             } => {
-//                                 // *control_flow = ControlFlow::Exit;
-//                             },
-//                             WindowEvent::Resized(physical_size) => {
-//                                 state.resize(physical_size);
-//                             },
-//                             WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => {
-//                                 state.resize(*new_inner_size);
-//                             }
-//                             _ => {}
-//                         }
-//                     }
-//                 }
-//             },
-//             Event::DeviceEvent { device_id, event } => {
-                
-//             },
-//             Event::UserEvent(_) => {},
-//             Event::Suspended => {},
-//             Event::Resumed => {},
-//             Event::MainEventsCleared => {
-//                 window.request_redraw();
-//             },
-//             Event::RedrawRequested(_) => {
-//                 state.update();
-//                 match state.render() {
-//                     Ok(_) => {},
-//                     Err(wgpu::SurfaceError::Lost) => {
-//                         state.resize(state.size);
-//                     },
-//                     Err(wgpu::SurfaceError::OutOfMemory) => {
-//                         *control_flow = ControlFlow::Exit;
-//                     },
-//                     Err(e) => {
-//                         eprintln!("{:?}", e);
-//                     },
-//                 }
-//             },
-//             Event::RedrawEventsCleared => {},
-//             Event::LoopDestroyed => {},
-//         }
-//     );
-
-// }
-
-// pub fn main() {
-//     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
-//     pollster::block_on(run());
-// }
-
-use std::{ops::Range, mem::{replace, size_of}, time::SystemTime, sync::Arc};
+use std::{time::SystemTime, sync::Arc};
 
 pub use bevy::{
     app::{ prelude::*, PluginGroupBuilder }, core::prelude::*, ecs::prelude::*, hierarchy::prelude::*, input::{prelude::*, InputPlugin},
     log::prelude::*, math::prelude::*, reflect::prelude::*, time::prelude::*,
-    utils::prelude::*, window::{prelude::*},
+    utils::prelude::*, window::prelude::*,
     ecs::system::{CommandQueue, EntityCommands, SystemState, SystemParam}, prelude::{Deref, DerefMut},
     a11y::*,
     // winit::*,
 };
 use image::GenericImageView;
-use pi_assets::{asset::Handle, mgr::AssetMgr, homogeneous::HomogeneousMgr};
+use pi_assets::{asset::Handle, mgr::AssetMgr};
 pub use pi_atom::Atom;
 use pi_bevy_render_plugin::SimpleInOut;
 pub use pi_bevy_winit_window::*;
@@ -109,53 +20,30 @@ pub use pi_bevy_render_plugin::{
     PiRenderDevice, PiRenderQueue, PiRenderGraph, PiRenderWindow, PiRenderOptions, PiSafeAtlasAllocator, PiScreenTexture, PiRenderPlugin,
     node::*, RenderContext, GraphError, constant::{ render_state::*, texture_sampler::* }, 
 };
+use pi_null::Null;
 use pi_postprocess::prelude::*;
 use pi_share::{ShareRefCell, Share};
-pub use pi_window_renderer::*;
-pub use pi_render::{
+use pi_render::{
     asset::*,
     renderer::{
-        attributes::*,
-        bind_group::*,
-        bind_buffer::*,
         vertex_buffer::*,
-        vertex_buffer_desc::*,
-        vertex_buffer_loader::*,
-        vertices::*,
-        instance::*,
         sampler::*,
         texture::*,
-        shader::*,
-        sampler::*,
-        shader_stage::*,
-        draw_sort::*,
         draw_obj::*,
-        draw_obj_list::*,
-        pipeline::*,
-        buildin_data::*,
-        buildin_var::*,
-    },
-    render_3d::{
-        shader::*,
-        bind_groups::{ scene::*, model::*, texture_sampler::* },
-        binds::{ scene::*, model::*, effect_value::*, effect_sampler2d::*, effect_texture2d::* },
     },
     rhi::{
         asset::*,
         pipeline::*,
-        device::{ RenderDevice },
+        device::RenderDevice,
         RenderQueue,
-        shader::WriteBuffer,
-        texture::*,
     },
-    components::view::{
-        target_alloc::*,
-    }
+    components::view::target_alloc::*,
 };
-pub use pi_assets::{asset::GarbageEmpty};
+pub use pi_assets::asset::GarbageEmpty;
 use pi_futures::BoxFuture;
 use smallvec::SmallVec;
 use wgpu::Extent3d;
+use wgpu1::Backends;
 
 
 #[derive(SystemParam)]
@@ -163,7 +51,19 @@ pub struct QueryParam<'w> (
     Res<'w, PiRenderWindow>,
     Res<'w, PiRenderDevice>,
     Res<'w, PiRenderQueue>,
-    Res<'w, WindowRenderer>,
+    Res<'w, PiScreenTexture>,
+    Res<'w, PiSafeAtlasAllocator>,
+    ResMut<'w, TestPostprocess>,
+    Res<'w, ResImageEffectResource>,
+);
+
+
+#[derive(SystemParam)]
+pub struct RunQueryParam<'w> (
+    Res<'w, PiRenderWindow>,
+    Res<'w, PiRenderDevice>,
+    Res<'w, PiRenderQueue>,
+    Res<'w, PiScreenTexture>,
     Res<'w, PiSafeAtlasAllocator>,
     Res<'w, TestPostprocess>,
     Res<'w, ResImageEffectResource>,
@@ -179,15 +79,15 @@ pub struct TestPostprocess {
     pub pipelines: Share<AssetMgr<RenderRes<RenderPipeline>>>,
     pub value_test: u8,
     pub lasttime: SystemTime,
-    pub atlas: SafeAtlasAllocator,
     pub target_type: TargetType,
     pub draws: Vec<DrawObj>,
-    pub size: winit::dpi::PhysicalSize<u32>,
     pub diffuse_texture: Handle<TextureRes>,
     pub diffuse_size: wgpu::Extent3d,
     pub mask_texture: Handle<TextureRes>,
     pub mask_size: wgpu::Extent3d,
     pub asset_tex: Share<AssetMgr<TextureRes>>,
+    pub frontdraws: Vec<PostProcessDraw>,
+    pub resulttarget: Result<PostprocessTexture, ()>,
 
     pub viewport: (f32, f32, f32, f32),
 }
@@ -201,12 +101,78 @@ impl Node for RenderNode {
 
     type Output = SimpleInOut;
 
-    type Param = QueryParam<'static>;
+    type BuildParam = QueryParam<'static>;
+    type RunParam = RunQueryParam<'static>;
+
+    fn build<'a>(
+        &'a mut self,
+        world: &'a World,
+        param: &'a mut SystemState<Self::BuildParam>,
+        context: RenderContext,
+        input: &'a Self::Input,
+        usage: &'a ParamUsage,
+        id: NodeId,
+        from: &'a [NodeId],
+        to: &'a [NodeId],
+    ) -> Result<Self::Output, String> {
+        let time = pi_time::Instant::now();
+
+        let world = unsafe {
+            &mut *(world as *const World as usize as *mut World)
+        };
+
+            let param: QueryParam = param.get_mut(world);
+            let (window, device, queue, final_render_target, atlas_allocator, mut postprocess, resources) = (param.0, param.1, param.2, param.3, param.4, param.5, param.6);
+
+        if let Some(screen) = &final_render_target.0 {
+            let view = if let Some(view) = &screen.view {
+                view
+            } else {
+                return Err(String::from(""));
+            };
+            let size = if let Some(tex) = &screen.texture() {
+                tex.texture.size()
+            } else {
+                return Err(String::from(""));
+            };
+
+            // calc
+            {
+                let src_texture = PostprocessTexture {
+                    use_x: 0, // self.diffuse_size.width / 4,
+                    use_y: 0, //self.diffuse_size.height / 4,
+                    use_w: postprocess.diffuse_size.width, // / 2,
+                    use_h: postprocess.diffuse_size.height, // / 2,
+                    width: postprocess.diffuse_size.width,
+                    height: postprocess.diffuse_size.height,
+                    view: ETextureViewUsage::Tex(postprocess.diffuse_texture.clone()),
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                };
+    
+                let receive_width = size.width;
+                let receive_height = size.height;
+    
+                let pipelines = postprocess.pipelines.clone();
+                let delta_time = 16;
+                let target_type = postprocess.target_type.clone();
+                let target_format = wgpu::TextureFormat::Rgba8Unorm;
+                let dst_size = (receive_width, receive_height);
+    
+                let draws = postprocess.postprocess.calc(delta_time, &device, &queue, src_texture, dst_size, &atlas_allocator, &resources, &pipelines, target_type, target_format);
+                match draws {
+                    Ok((draws, restarget)) => { postprocess.frontdraws = draws; postprocess.resulttarget = Ok(restarget) },
+                    Err(_) => { postprocess.frontdraws.clear(); postprocess.resulttarget = Err(()) },
+                }
+            }
+        }
+
+        Ok(input.clone())
+    }
 
     fn run<'a>(
         &'a mut self,
         world: &'a World,
-        param: &'a mut SystemState<Self::Param>,
+        param: &'a mut SystemState<RunQueryParam<'static>>,
         _: RenderContext,
         mut commands: ShareRefCell<wgpu::CommandEncoder>,
         input: &'a Self::Input,
@@ -214,112 +180,121 @@ impl Node for RenderNode {
 		_id: NodeId,
 		_from: &[NodeId],
 		_to: &[NodeId],
-    ) -> BoxFuture<'a, Result<Self::Output, String>> {
+    ) -> BoxFuture<'a, Result<(), String>> {
         let time = pi_time::Instant::now();
 
-            let param: QueryParam = param.get(world);
-            let (window, device, queue, final_render_target, atlas_allocator, postprocess, resources) = (param.0, param.1, param.2, param.3, param.4, param.5, param.6);
+        let param: RunQueryParam = param.get(world);
+        let (window, device, queue, final_render_target, atlas_allocator, postprocess, resources) = (param.0, param.1, param.2, param.3, param.4, param.5, param.6);
 
-        if let Some(view) = final_render_target.view() {
-            let src_texture = PostprocessTexture {
-                use_x: 0, // self.diffuse_size.width / 4,
-                use_y: 0, //self.diffuse_size.height / 4,
-                use_w: postprocess.diffuse_size.width, // / 2,
-                use_h: postprocess.diffuse_size.height, // / 2,
-                width: postprocess.diffuse_size.width,
-                height: postprocess.diffuse_size.height,
-                view: ETextureViewUsage::Tex(postprocess.diffuse_texture.clone()),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            };
-    
-            let receive_w = postprocess.size.width - 200 as u32;
-            let receive_h = postprocess.size.height - 200 as u32;
-            let receive_width = postprocess.size.width;
-            let receive_height = postprocess.size.height;
-    
-            let dst = PostprocessTexture {
-                use_x: postprocess.value_test as u32,
-                use_y: postprocess.value_test as u32,
-                use_w: receive_w,
-                use_h: receive_h,
-                width: receive_width,
-                height: receive_height,
-                view: ETextureViewUsage::Temp(view.clone(), 0),
-                format: wgpu::TextureFormat::Rgba8Unorm,
-            };
-    
-            let final_targets = create_target(wgpu::TextureFormat::Rgba8Unorm, get_blend_state(EBlend::Combine), wgpu::ColorWrites::ALL);
-            let final_depth_and_stencil = None;
-    
-            let result = postprocess.postprocess.draw_front(
-                &device, 
-                &queue,
-                &mut commands,
-                src_texture,
-                (receive_w, receive_h),
-                & postprocess.atlas,
-                &resources,
-                & postprocess.pipelines,
-                postprocess.target_type.clone(),
-                wgpu::TextureFormat::Rgba8Unorm
-            );
-    
-            // postprocess.draws.clear();
-            let _ = match result {
-                Ok(result) => {
-                    // let matrix = [0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.];
-                    let matrix = [1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.];
-                    // renderpass.set_viewport(dst.use_x as f32, dst.use_y as f32, dst.use_w as f32, dst.use_h as f32, 0., 1.);
-                    // println!("result {}, {}, {}, {}", result.use_x(), result.use_y(), result.use_w(), result.use_h());
-                    if let Some(draw) = postprocess.postprocess.draw_final(
-                        &device, 
-                        &queue,
-                        &matrix,
-                        1.,
-                        &postprocess.atlas,
-                        &result,
-                        (dst.use_w(), dst.use_h()),
-                        &resources,
-                        // &IDENTITY_MATRIX,
-                        &postprocess.pipelines,
-                        final_targets,
-                        final_depth_and_stencil,
-                        postprocess.target_type.clone(),
-                        wgpu::TextureFormat::Rgba8Unorm
-                    ) {
-                        let mut renderpass = commands.begin_render_pass(
-                            &wgpu::RenderPassDescriptor {
-                                label: Some("ToScreen"),
-                                color_attachments: &[
-                                    Some(
-                                        wgpu::RenderPassColorAttachment {
-                                            view: dst.view(),
-                                            resolve_target: None,
-                                            ops: wgpu::Operations {
-                                                load: wgpu::LoadOp::Load,
-                                                store: true,
-                                            }
-                                        }
-                                    )
-                                ],
-                                depth_stencil_attachment: None,
-                            }
-                        );
-        
-                        let (x, y, w, h) = postprocess.viewport;
-                        renderpass.set_viewport(x, y, w, h, 0., 1.);
-                        draw.draw(&mut renderpass);
+        if let Some(screen) = &final_render_target.0 {
+            let view = if let Some(view) = &screen.view {
+                view
+            } else {
+                return Box::pin(
+                    async move {
+                        Err(String::from(""))
                     }
-                },
-                Err(_) => {
-                    
-                },
+                );
             };
+            let size = if let Some(tex) = &screen.texture() {
+                tex.texture.size()
+            } else {
+                return Box::pin(
+                    async move {
+                        Err(String::from(""))
+                    }
+                );
+            };
+
+            // draw_front
+            {
+        
+                postprocess.postprocess.draw_front(
+                    &mut commands,
+                    &postprocess.frontdraws
+                );
+            }
+
+            // draw_final
+            {
+                let receive_w = size.width - 200 as u32;
+                let receive_h = size.height - 200 as u32;
+                let receive_width = size.width;
+                let receive_height = size.height;
+        
+                let dst = PostprocessTexture {
+                    use_x: postprocess.value_test as u32,
+                    use_y: postprocess.value_test as u32,
+                    use_w: receive_w,
+                    use_h: receive_h,
+                    width: receive_width,
+                    height: receive_height,
+                    view: ETextureViewUsage::Temp(view.clone(), 0),
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                };
+            
+                let final_targets = create_target(wgpu::TextureFormat::Rgba8Unorm, get_blend_state(EBlend::Combine), wgpu::ColorWrites::ALL);
+                let final_depth_and_stencil = None;
+
+                let result = postprocess.resulttarget.clone();
+        
+                // postprocess.draws.clear();
+                let _ = match result {
+                    Ok(result) => {
+                        // let matrix = [0.3535533845424652, 0.3535533845424652, 0., 0., -0.3535533845424652, 0.3535533845424652, 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 1.];
+                        let matrix = [1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.];
+                        // renderpass.set_viewport(dst.use_x as f32, dst.use_y as f32, dst.use_w as f32, dst.use_h as f32, 0., 1.);
+                        // println!("result {}, {}, {}, {}", result.use_x(), result.use_y(), result.use_w(), result.use_h());
+                        if let Some(draw) = postprocess.postprocess.draw_final(
+                            &device, 
+                            &queue,
+                            &matrix,
+                            1.,
+                            &atlas_allocator,
+                            &result,
+                            (dst.use_w(), dst.use_h()),
+                            &resources,
+                            // &IDENTITY_MATRIX,
+                            &postprocess.pipelines,
+                            final_targets,
+                            final_depth_and_stencil,
+                            postprocess.target_type.clone(),
+                            wgpu::TextureFormat::Rgba8Unorm
+                        ) {
+                            let mut renderpass = commands.begin_render_pass(
+                                &wgpu::RenderPassDescriptor {
+                                    label: Some("ToScreen"),
+                                    color_attachments: &[
+                                        Some(
+                                            wgpu::RenderPassColorAttachment {
+                                                view: dst.view(),
+                                                resolve_target: None,
+                                                ops: wgpu::Operations {
+                                                    load: wgpu::LoadOp::Load,
+                                                    store: true,
+                                                }
+                                            }
+                                        )
+                                    ],
+                                    depth_stencil_attachment: None,
+                                }
+                            );
+            
+                            let (x, y, w, h) = postprocess.viewport;
+                            renderpass.set_viewport(x, y, w, h, 0., 1.);
+                            draw.draw(&mut renderpass);
+                        }
+                    },
+                    Err(_) => {
+                        
+                    },
+                };
+            }
         }
 
         return Box::pin(
             async move {
-                Ok(SimpleInOut { target: None, valid_rect: None })
+                Ok(())
             }
         );
     }
@@ -335,7 +310,7 @@ impl AddEvent for App {
 	fn add_frame_event<T: Event>(&mut self) -> &mut Self {
 		if !self.world.contains_resource::<Events<T>>() {
 			self.init_resource::<Events<T>>()
-				.add_system(Events::<T>::update_system);
+				.add_systems(Update, Events::<T>::update_system);
 		}
 		self
 	}
@@ -344,21 +319,6 @@ impl AddEvent for App {
 pub struct PluginTest;
 impl Plugin for PluginTest {
     fn build(&self, app: &mut App) {
-        let renderdevice = app.world.get_resource::<PiRenderDevice>().unwrap().clone();
-        let queue = app.world.get_resource::<PiRenderQueue>().unwrap().clone();
-        let texture_assets_mgr = AssetMgr::<RenderRes<wgpu::TextureView>>::new(
-            GarbageEmpty(), 
-            false,
-            60 * 1024 * 1024, 
-            3 * 60 * 1000
-        );
-        let unusetexture_assets_mgr = HomogeneousMgr::<RenderRes<UnuseTexture>>::new(
-            pi_assets::homogeneous::GarbageEmpty(), 
-            10 * size_of::<UnuseTexture>(),
-            size_of::<UnuseTexture>(),
-        );
-        let mut atlas = SafeAtlasAllocator::new(renderdevice.0.clone(), texture_assets_mgr, unusetexture_assets_mgr);
-        
         let mut colors_descriptor = SmallVec::<[TextureDescriptor;1]>::new();
         colors_descriptor.push(
             TextureDescriptor {
@@ -373,6 +333,7 @@ impl Plugin for PluginTest {
                 view_dimension: Some(wgpu::TextureViewDimension::D2),
             }
         );
+        let mut atlas = app.world.get_resource_mut::<PiSafeAtlasAllocator>().unwrap().clone();
         let target_type = atlas.create_type(TargetDescriptor {
             colors_descriptor: colors_descriptor,
             need_depth: false,
@@ -380,6 +341,11 @@ impl Plugin for PluginTest {
             default_height: 2048,
             depth_descriptor: None
         });
+        log::warn!("Create TargetType: {:?}", target_type);
+
+        let renderdevice = app.world.get_resource::<PiRenderDevice>().unwrap().clone();
+        let queue = app.world.get_resource::<PiRenderQueue>().unwrap().clone();
+        
 
         let mut vballocator = VertexBufferAllocator::new(1024, 1000);
         let mut resources = SingleImageEffectResource::new(&renderdevice, &queue, &mut vballocator);
@@ -412,28 +378,29 @@ impl Plugin for PluginTest {
             postprocess: PostProcess::default(),
             value_test: 0,
             lasttime: std::time::SystemTime::now(),
-            atlas: atlas,
             target_type,
             draws: vec![],
             asset_samplers,
             pipelines,
-            size: winit::dpi::PhysicalSize::<u32>::new(800, 600),
             diffuse_texture,
             diffuse_size,
             asset_tex,
             mask_texture,
             mask_size,
-            viewport: (400. - 100., 300. - 100., 200., 200.)
+            viewport: (400. - 100., 300. - 100., 200., 200.),
+            frontdraws: vec![],
+            resulttarget: Err(()),
         });
 
         app.insert_resource(TestVB(VertexBufferAllocator::new(1024, 1000)));
 
-        app.add_system(sys);
+        app.add_systems(Update, sys);
 
         let mut graphic = app.world.get_resource_mut::<PiRenderGraph>().unwrap();
-        if let Ok(node) = graphic.add_node("TEST", RenderNode) {
-            graphic.add_depend(WindowRenderer::CLEAR_KEY, "TEST");
-            graphic.add_depend("TEST", WindowRenderer::KEY);
+        if let Ok(node) = graphic.add_node("TEST", RenderNode, NodeId::null()) {
+            // graphic.add_depend(WindowRenderer::CLEAR_KEY, "TEST");
+            // graphic.add_depend("TEST", WindowRenderer::KEY);
+            graphic.set_finish("TEST", true);
         }
     }
 }
@@ -495,12 +462,7 @@ pub fn texture(data: &[u8], key: &str, renderdevice: &RenderDevice, queue: &Rend
 
 pub fn sys(
     mut test: ResMut<TestPostprocess>,
-    resources: Res<ResImageEffectResource>,
-    mut vballocator: ResMut<TestVB>,
-    renderdevice: Res<PiRenderDevice>,
-    queue: Res<PiRenderQueue>,
 ) {
-    test.draws.clear();
     let mut r = test.value_test;
     if r == 255 {
         r = 0;
@@ -561,12 +523,6 @@ pub fn sys(
     // let clip_sdf = ClipSdf::circle((400., 300.), 50., (200., 200., 300., 200.));
     // test.postprocess.clip_sdf = Some(clip_sdf);
 
-    test.postprocess.calc(
-        16,
-        &renderdevice, 
-        &queue,
-        &resources,
-    );
 }
 
 pub fn main() {
@@ -574,22 +530,42 @@ pub fn main() {
 
     let mut app = App::default();
 
+    let width = 800;
+    let height = 600;
+
+    let mut opt = PiRenderOptions::default();
+    opt.backends = Backends::VULKAN;
+    app.insert_resource(opt);
+
 	let mut window_plugin = WindowPlugin::default();
     if let Some(primary_window) = &mut window_plugin.primary_window {
-        primary_window.resolution.set_physical_resolution(800, 600);
+        primary_window.resolution.set_physical_resolution(width, height);
     }
+	let (w, eventloop) = {
+		use pi_winit::platform::windows::EventLoopBuilderExtWindows;
+		let event_loop = pi_winit::event_loop::EventLoopBuilder::new().with_any_thread(true).build();
+		let window = pi_winit::window::Window::new(&event_loop).unwrap();
+		(window, event_loop)
+	};
 
-    app.add_plugin(InputPlugin::default());
-    app.add_plugin(window_plugin);
-    app.add_plugin(AccessibilityPlugin);
-    app.add_plugin(bevy::winit::WinitPlugin::default());
-    // .add_plugin(WorldInspectorPlugin::new())
-    app.add_plugin(pi_bevy_asset::PiAssetPlugin::default());
-    app.add_plugin(PiRenderPlugin::default());
-    app.add_plugin(PluginWindowRender);
-    app.world.get_resource_mut::<WindowRenderer>().unwrap().active = true;
-    app.add_plugin(PluginTest);
+    app.insert_resource(AssetMgrConfigs::default());
+    app.add_plugins(
+        (
+            InputPlugin::default(),
+            window_plugin,
+        )
+    );
+    app.add_plugins(
+        (
+            AccessibilityPlugin,
+            pi_bevy_winit_window::WinitPlugin::new(Arc::new(w)).with_size(width, height),
+            pi_bevy_asset::PiAssetPlugin::default(),
+            PiRenderPlugin::default(),
+        )
+    );
+
+    app.add_plugins(PluginTest);
     
-    app.run()
+    loop { app.update(); }
 
 }

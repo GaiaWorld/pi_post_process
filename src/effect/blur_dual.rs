@@ -78,7 +78,7 @@ impl super::TEffectForBuffer for BlurDualRenderer {
         geo_matrix: &[f32],
         tex_matrix: (f32, f32, f32, f32),
         alpha: f32, depth: f32,
-        device: &pi_render::rhi::device::RenderDevice,
+        _device: &pi_render::rhi::device::RenderDevice,
         queue: &pi_render::rhi::RenderQueue,
         _: (u32, u32),
         dst_size: (u32, u32),

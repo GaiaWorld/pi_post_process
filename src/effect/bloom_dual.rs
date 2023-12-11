@@ -1,6 +1,6 @@
 use crate::prelude::SingleImageEffectResource;
 
-use super::{FilterBrightness, BlurDualRenderer, BlurDual, CopyIntensity, FilterBrightnessRenderer, CopyIntensityRenderer, BlurDualRendererList};
+use super::{FilterBrightness, BlurDual, CopyIntensity, FilterBrightnessRenderer, CopyIntensityRenderer, BlurDualRendererList};
 
 /// 使用 DualBlur 的辉光 - 只能全屏效果
 #[derive(Clone, Copy, Debug)]
@@ -22,8 +22,8 @@ impl BloomDual {
         self.radius > 0 && self.iteration > 0 && self.intensity > 0.
     }
 }
-impl BloomDual {
-    fn default(resources: &SingleImageEffectResource) -> Self {
+impl Default for BloomDual {
+    fn default() -> Self {
         Self { radius: 1, iteration: 1, intensity: 1.0, threshold: 0., threshold_knee: 0. }
     }
 }

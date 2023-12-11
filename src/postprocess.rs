@@ -8,7 +8,6 @@ use pi_render::{
     rhi::{device::RenderDevice, pipeline::RenderPipeline, asset::RenderRes, RenderQueue},
     renderer::{
         pipeline::DepthStencilState,
-        vertex_buffer::VertexBufferAllocator,
         vertices::RenderVertices,
         draw_obj::DrawObj
     }
@@ -166,30 +165,6 @@ impl PostProcess {
         delta_time: u64,
         device: &RenderDevice,
         queue: &RenderQueue,
-        resources: &SingleImageEffectResource,
-    ) {
-        if self.renderer_copy.is_none() {
-            self.renderer_copy = Some(CopyIntensityRenderer { param: CopyIntensity::default(), uniform: resources.uniform_buffer() })
-        }
-        self.check(delta_time, true, device, queue, resources);
-        // println!("{:?}", self.flags);
-    }
-    /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
-    /// * `src`
-    ///   * 源纹理内容
-    /// * `dst_size`
-    ///   * 接收处理结果的纹理尺寸
-    /// * `return`
-    ///   * Ok(PostprocessTexture) 执行成功
-    ///     * 返回 渲染结果纹理
-    ///     * 当实际没有渲染 结果时 会返回 传入的src 对应数据
-    ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
-    ///   * Err(String)
-    pub fn draw_front(
-        &self,
-        device: &RenderDevice,
-        queue: &RenderQueue,
-        encoder: &mut wgpu::CommandEncoder,
         mut src: PostprocessTexture,
         dst_size: (u32, u32),
         safeatlas: &SafeAtlasAllocator,
@@ -197,9 +172,15 @@ impl PostProcess {
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         target_type: TargetType,
         target_format: wgpu::TextureFormat,
-    ) -> Result<PostprocessTexture, EPostprocessError> {
+    ) -> Result<(Vec<PostProcessDraw>, PostprocessTexture), EPostprocessError> {
+        if self.renderer_copy.is_none() {
+            self.renderer_copy = Some(CopyIntensityRenderer { param: CopyIntensity::default(), uniform: resources.uniform_buffer() })
+        }
+        self.check(delta_time, true, device, queue, resources);
 
         let matrix: &[f32] = &IDENTITY_MATRIX;
+
+        let mut drawlist: Vec<PostProcessDraw> = vec![];
         
         let mut src_premultiplied: bool = self.src_preimultiplied;
         if src.use_w() != dst_size.0 || src.use_h() != dst_size.1 {
@@ -219,17 +200,36 @@ impl PostProcess {
             src_premultiplied = false;
             
             let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
-            draw.draw(Some(encoder), None);
+            drawlist.push(draw);
             src = result;
         }
 
-
-
         let result = self._draw_front(
-            device, queue, encoder, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type, target_format, src_premultiplied
+            device, queue, src, &IDENTITY_MATRIX, safeatlas, resources, pipelines, target_type, target_format, src_premultiplied, drawlist
         );
-
+        
         result
+        // println!("{:?}", self.flags);
+    }
+    /// 对源内容进行后处理 - 最后一个效果的渲染在 draw_final 接口调用
+    /// * `src`
+    ///   * 源纹理内容
+    /// * `dst_size`
+    ///   * 接收处理结果的纹理尺寸
+    /// * `return`
+    ///   * Ok(PostprocessTexture) 执行成功
+    ///     * 返回 渲染结果纹理
+    ///     * 当实际没有渲染 结果时 会返回 传入的src 对应数据
+    ///       * Example: 模糊后处理, 模糊半径为 0 则认为不需要渲染过程, 应当直接使用 src, 返回 false
+    ///   * Err(String)
+    pub fn draw_front(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        draws: &Vec<PostProcessDraw>,
+    ) {
+        draws.iter().for_each(|draw| {
+            draw.draw(Some(encoder), None);
+        });
     }
     
     /// 对源内容进行最后一个效果的处理
@@ -281,7 +281,7 @@ impl PostProcess {
                 let mut tempresult = TempResult { target: None, finaldraw: None };
                 let src_premultiplied = if count == 1 { self.src_preimultiplied } else { false };
                 let dst_premultiply = self.src_preimultiplied;
-                self._draw_single_simple(device, queue, None, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, &mut tempresult, src_premultiplied, dst_premultiply);
+                self._draw_single_simple(device, queue, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, &mut tempresult, src_premultiplied, dst_premultiply);
 
                 if let Some(finaldraw) = tempresult.finaldraw {
                     Some(finaldraw)
@@ -300,7 +300,6 @@ impl PostProcess {
         &self,
         device: &RenderDevice,
         queue: &RenderQueue,
-        encoder: &mut wgpu::CommandEncoder,
         src: PostprocessTexture,
         _: &[f32],
         safeatlas: &SafeAtlasAllocator,
@@ -309,11 +308,12 @@ impl PostProcess {
         target_type: TargetType,
         target_format: wgpu::TextureFormat,
         src_premultiplied: bool,
-    ) -> Result<PostprocessTexture, EPostprocessError>  {
+        mut drawlist: Vec<PostProcessDraw>,
+    ) -> Result<(Vec<PostProcessDraw>, PostprocessTexture), EPostprocessError>  {
         let count = self.flags.len();
 
         if count <= 1 {
-            Ok(src)
+            Ok((drawlist, src))
         } else {
             let mut source = src;
             let target = ETarget::Temp(source.use_w(), source.use_h());
@@ -321,54 +321,27 @@ impl PostProcess {
             for i in 0..count-1 {
                 let flag = *self.flags.get(i).unwrap();
 
-                let mut draws = vec![];
-                
                 let mut temp_result = TempResult { target: None, finaldraw: None };
 
                 self._draw_single_simple(
-                    device, queue, Some(encoder),
+                    device, queue,
                     &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), flag, safeatlas,
                     &source, target,
-                    &mut draws, resources, pipelines,
+                    &mut drawlist, resources, pipelines,
                     create_default_target(target_format), None, target_type, target_format, &mut temp_result, src_premultiplied, false
                 );
                 source = temp_result.target.unwrap();
                 temp_result.target = None;
-                draws.iter().for_each(|v| {
-                    v.draw(Some(encoder), None);
-                });
             }
 
-            Ok(source)
+            Ok((drawlist, source))
         }
     }
-
-    // fn _draw_single_front<'a>(
-    //     &self,
-    //     device: & RenderDevice,
-    //     queue: & RenderQueue,
-    //     encoder: &mut wgpu::CommandEncoder,
-    //     matrix: & [f32],
-    //     flag: EPostprocessRenderType,
-    //     safeatlas: &SafeAtlasAllocator,
-    //     source: PostprocessTexture,
-    //     target: Option<PostprocessTexture>,
-    //     draws: &mut Vec<PostProcessDraw>,
-    //     resources: &SingleImageEffectResource,
-    //     pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
-    //     depth_stencil: Option<DepthStencilState>,
-    //     target_type: TargetType,
-    // ) -> PostprocessTexture {
-
-    //     // self._draw_single_simple(device, queue, Some(encoder), matrix, SimpleRenderExtendsData::default(), flag, safeatlas, source, target, draws, resources, pipelines, create_default_target(), depth_stencil, target_type)
-
-    // }
 
     fn _draw_single_simple<'a>(
         &'a self,
         device: & RenderDevice,
         queue: & RenderQueue,
-        encoder: Option<&mut wgpu::CommandEncoder>,
         matrix: & [f32],
         extends: SimpleRenderExtendsData,
         flag: EPostprocessRenderType,
@@ -614,7 +587,7 @@ impl PostProcess {
                 match target {
                     ETarget::Temp(_, _) => {
                         let mut realiter = 0;
-                        let blur_dual = self.blur_dual.as_ref().unwrap();
+                        let _blur_dual = self.blur_dual.as_ref().unwrap();
                         let fromw = dst_size.0;
                         let fromh = dst_size.1;
                         let mut tow = fromw;
@@ -695,16 +668,12 @@ impl PostProcess {
                 let param = self.renderer_bloom_dual.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        if let Some(encoder) = encoder {
-                            let result = bloom_dual_render(
-                                param,
-                                device, queue, encoder, matrix, extends,
-                                safeatlas, source.clone(), draws, resources, pipelines, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
-                            );
-                            temp_result.target = Some(result);
-                        } else {
-                            temp_result.target = Some(source.clone());
-                        };
+                        let result = bloom_dual_render(
+                            param,
+                            device, queue, matrix, extends,
+                            safeatlas, source.clone(), draws, resources, pipelines, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
+                        );
+                        temp_result.target = Some(result);
                         return;
                     },
                     _ => {
@@ -716,16 +685,12 @@ impl PostProcess {
                 let param = self.renderer_horizon_glitch.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        if let Some(_encoder) = encoder {
-                            let result = horizon_glitch_render(
-                                param,
-                                device, queue, self.horizon_glitch_instance.clone(), matrix,
-                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
-                            );
-                            temp_result.target = Some(result);
-                        } else {
-                            temp_result.target = Some(source.clone());
-                        };
+                        let result = horizon_glitch_render(
+                            param,
+                            device, queue, self.horizon_glitch_instance.clone(), matrix,
+                            safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
+                        );
+                        temp_result.target = Some(result);
                         return;
                     },
                     _ => {
@@ -737,16 +702,12 @@ impl PostProcess {
                 let (hparam, vparam) = self.renderer_blur_gauss.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        if let Some(_encoder) = encoder {
-                            let result = blur_gauss_render(
-                                hparam, vparam,
-                                device, queue, matrix,
-                                safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
-                            );
-                            temp_result.target = Some(result);
-                        } else {
-                            temp_result.target = Some(source.clone());
-                        };
+                        let result = blur_gauss_render(
+                            hparam, vparam,
+                            device, queue, matrix,
+                            safeatlas, source, None, draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, src_premultiplied, dst_premultiply
+                        );
+                        temp_result.target = Some(result);
                         return;
                     },
                     _ => {

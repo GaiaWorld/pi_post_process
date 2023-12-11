@@ -10,7 +10,7 @@ use pi_render::{
     },
     rhi::{
         device::RenderDevice, 
-        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes, RenderQueue
+        sampler::{SamplerDesc, EAddressMode, EFilterMode, EAnisotropyClamp}, pipeline::RenderPipeline, asset::RenderRes
     },
     asset::{TAssetKeyU64, ASSET_SIZE_FOR_UNKOWN},
     components::view::target_alloc::{SafeAtlasAllocator, TargetType}
