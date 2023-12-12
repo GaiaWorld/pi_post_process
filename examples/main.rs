@@ -106,7 +106,7 @@ impl Node for RenderNode {
 
     fn build<'a>(
         &'a mut self,
-        world: &'a World,
+        world: &'a mut World,
         param: &'a mut SystemState<Self::BuildParam>,
         context: RenderContext,
         input: &'a Self::Input,
@@ -116,10 +116,6 @@ impl Node for RenderNode {
         to: &'a [NodeId],
     ) -> Result<Self::Output, String> {
         let time = pi_time::Instant::now();
-
-        let world = unsafe {
-            &mut *(world as *const World as usize as *mut World)
-        };
 
             let param: QueryParam = param.get_mut(world);
             let (window, device, queue, final_render_target, atlas_allocator, mut postprocess, resources) = (param.0, param.1, param.2, param.3, param.4, param.5, param.6);
