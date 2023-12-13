@@ -37,6 +37,13 @@ vec4 texColor(vec4 src) {
     return src;
 }
 
+vec2 clampUV(vec2 uv, vec2 minUV, vec2 maxUV) {
+    return vec2(
+        clamp(uv.x, minUV.x, maxUV.x),
+        clamp(uv.y, minUV.y, maxUV.y)
+    );
+}
+
 vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float blurRadius, float time) {
 
     vec4 accumulator = vec4(0.0);
@@ -56,7 +63,7 @@ vec4 BokehBlur(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, float 
         angle = GLODEN_ROT * angle;
 
         tempuv = uv + (r - 1.0) * angle;
-        vec4 bokeh = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), tempuv));
+        vec4 bokeh = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), clampUV(tempuv, diffuseMat.xy, diffuseMat.zw + diffuseMat.xy) ));
 
         accumulator += bokeh * bokeh;
         divisor += bokeh;

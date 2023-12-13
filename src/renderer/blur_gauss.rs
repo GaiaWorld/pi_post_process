@@ -43,7 +43,7 @@ pub fn blur_gauss_render(
         color_state.clone(), None,
         src_premultiplied, false
     ).unwrap();
-    let result = EffectBlurDual::get_target(None, &source, dst_size, safeatlas, target_type, target_format); 
+    let result = EffectBlurDual::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
     
@@ -57,7 +57,7 @@ pub fn blur_gauss_render(
         color_state.clone(), None,
         false, dst_premultiply
     ).unwrap();
-    let result = EffectBlurDual::get_target(target, &result, dst_size, safeatlas, target_type, target_format); 
+    let result = EffectBlurDual::get_target(target, &result, dst_size, safeatlas, target_type, target_format, true); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
 

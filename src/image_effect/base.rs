@@ -90,6 +90,7 @@ impl PostProcessDraw {
                             depth_stencil_attachment: None,
                         }
                     );
+                    log::warn!("Viewport: {:?}", (x as f32, y as f32, w as f32, h as f32));
                     renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
                     renderpass.set_scissor_rect(x, y, w, h);
                     renderpass.set_pipeline(pipeline);
@@ -271,17 +272,17 @@ impl SingleImageEffectResource {
 }
 
 pub trait TImageEffect {
-    fn get_target(target: Option<PostprocessTexture>, source: &PostprocessTexture, dst_size: (u32, u32), safeatlas: &SafeAtlasAllocator, target_type: TargetType, target_format: wgpu::TextureFormat) -> PostprocessTexture {
+    fn get_target(target: Option<PostprocessTexture>, source: &PostprocessTexture, dst_size: (u32, u32), safeatlas: &SafeAtlasAllocator, target_type: TargetType, target_format: wgpu::TextureFormat, onlyonce: bool) -> PostprocessTexture {
         let mut templist = vec![];
         let target = if let Some(target) = target {
             target
         } else if let Some(temp) = source.get_share_target() {
             templist.push(temp);
-            let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-            PostprocessTexture::from_share_target(target, target_format)
+            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), !onlyonce);
+            PostprocessTexture::from_share_target(Share::new(target), target_format)
         } else {
-            let target = safeatlas.allocate(dst_size.0, dst_size.1, target_type, templist.iter());
-            PostprocessTexture::from_share_target(target, target_format)
+            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), !onlyonce);
+            PostprocessTexture::from_share_target(Share::new(target), target_format)
         };
         target
     }

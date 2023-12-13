@@ -109,7 +109,7 @@ pub fn horizon_glitch_render(
         color_state.clone(), None, false,
         src_premultiplied, dst_premultiply
     ).unwrap();
-    let result = EffectBlurDual::get_target(target, &source, dst_size, safeatlas, target_type, target_format); 
+    let result = EffectBlurDual::get_target(target, &source, dst_size, safeatlas, target_type, target_format, true); 
     let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
     draws.push(draw);
 

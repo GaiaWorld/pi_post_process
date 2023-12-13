@@ -29,6 +29,13 @@ vec4 texColor(vec4 src) {
     return src;
 }
 
+vec2 clampUV(vec2 uv, vec2 minUV, vec2 maxUV) {
+    return vec2(
+        clamp(uv.x, minUV.x, maxUV.x),
+        clamp(uv.y, minUV.y, maxUV.y)
+    );
+}
+
 vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff, float time) {
     vec4 c = vec4(0., 0., 0., 0.);
     float count = 0.0;
@@ -45,7 +52,7 @@ vec4 loop_n(texture2D diffuseTex, sampler sampler_diffuseTex, vec2 uv, vec2 diff
             break;
         }
         count += 1.0;
-        c += texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), vec2(clamp(uv.x + i * diff.x, 0., 1.), clamp(uv.y + i * diff.y, 0., 1.))));
+        c += texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), clampUV(uv + i * diff, diffuseMat.xy, diffuseMat.zw + diffuseMat.xy) ));
     }
 
     return c / count;

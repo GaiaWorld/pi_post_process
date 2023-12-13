@@ -99,7 +99,7 @@ pub fn get_share_target_view(
 
     // println!("get_share_target_view, f = {:?}", format);
 
-    let srt = atlas_allocator.allocate(
+    let srt = atlas_allocator.allocate_not_hold(
         width,
         height,
         atlas_allocator.get_or_create_type(TargetDescriptor {

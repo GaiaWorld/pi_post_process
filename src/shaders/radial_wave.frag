@@ -37,7 +37,16 @@ vec4 texColor(vec4 src) {
     return src;
 }
 
+vec2 clampUV(vec2 uv, vec2 minUV, vec2 maxUV) {
+    return vec2(
+        clamp(uv.x, minUV.x, maxUV.x),
+        clamp(uv.y, minUV.y, maxUV.y)
+    );
+}
+
 void main() {
+    vec2 minUV = vec2(0.) * diffuseMat.zw + diffuseMat.xy;
+    vec2 maxUV = vec2(1.) * diffuseMat.zw + diffuseMat.xy;
 
     vec2 vMainUV = postiion_cs * diffuseMat.zw + diffuseMat.xy;
 
@@ -52,7 +61,7 @@ void main() {
     float t = (len - start) / width * cycle;
     diff = fade * weight * sin(t * 3.141592653589793);
 
-    gl_FragColor = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), fract(vMainUV + diff * diffuseMat.zw)));
+    gl_FragColor = texColor(texture(sampler2D(diffuseTex, sampler_diffuseTex), clampUV(vMainUV + diff * diffuseMat.zw, minUV, maxUV)));
     gl_FragColor.a *= alpha;
     gl_FragColor.rgb *= mix(1., gl_FragColor.a, step(0.5, dst_preimultiply));
 }
