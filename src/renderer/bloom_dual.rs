@@ -45,7 +45,7 @@ pub fn bloom_dual_render(
         color_state.clone(), None, false,
         src_premultiplied, false
     ).unwrap();
-    log::warn!("Filter: {:?}", (source.get_rect(),  filterresult.get_rect()));
+    // log::warn!("Filter: {:?}", (source.get_rect(),  filterresult.get_rect()));
     let draw = PostProcessDraw::Temp(filterresult.get_rect(), draw, filterresult.view.clone() );
     // draw.draw(Some(encoder), None);
     draws.push(draw);
@@ -61,7 +61,7 @@ pub fn bloom_dual_render(
             realiter += 1;
     
             let result = EffectBlurDual::get_target(None, &tempsource, (to_w, to_h), safeatlas, target_type, target_format, false); 
-            log::warn!("Down: {:?}", (tempsource.get_rect(),  result.get_rect()));
+            // log::warn!("Down: {:?}", (tempsource.get_rect(),  result.get_rect()));
             let draw = EffectBlurDual::ready(
                 bloom_dual.blur_duals.downs.get(idx).unwrap(), resources,
                 renderdevice, queue,
@@ -96,7 +96,7 @@ pub fn bloom_dual_render(
             temptarget = temptargets.pop();
             
             let result = EffectBlurDual::get_target(temptarget, &tempsource, (to_w, to_h), safeatlas, target_type, target_format, false); 
-            log::warn!("Up: {:?}", (tempsource.get_rect(),  result.get_rect()));
+            // log::warn!("Up: {:?}", (tempsource.get_rect(),  result.get_rect()));
             let draw = EffectBlurDual::ready(
                 bloom_dual.blur_duals.ups.get(idx).unwrap(), resources,
                 renderdevice, queue,
@@ -136,14 +136,14 @@ pub fn bloom_dual_render(
                     color_state_for_add.clone(), depth_stencil, false,
                     false, false
                 ).unwrap();
-                log::warn!("End: {:?}", (tempsource.get_rect(),  result.get_rect()));
+                // log::warn!("End: {:?}", (tempsource.get_rect(),  result.get_rect()));
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 draws.push(draw);
                 return result;
             },
             _ => {
                 let dst_size = (source.use_w(), source.use_h());
-                let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, false);
+                let result = EffectCopy::get_target(None, &tempsource, dst_size, safeatlas, target_type, target_format, false);
                 let draw = EffectCopy::ready(
                     &bloom_dual.copy, resources,
                     renderdevice, queue, 0, dst_size,
@@ -154,7 +154,7 @@ pub fn bloom_dual_render(
                     color_state.clone(), None, false,
                     false, false
                 ).unwrap();
-                log::warn!("End 0: {:?}", (source.get_rect(),  result.get_rect()));
+                // log::warn!("End 0: {:?}", (source.get_rect(),  result.get_rect()));
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 // draw.draw(Some(encoder), None);
                 draws.push(draw);
@@ -169,7 +169,7 @@ pub fn bloom_dual_render(
                     color_state_for_add.clone(), depth_stencil, true,
                     false, dst_premultiply
                 ).unwrap();
-                log::warn!("End 1: {:?}", (tempsource.get_rect(),  result.get_rect()));
+                // log::warn!("End 1: {:?}", (tempsource.get_rect(),  result.get_rect()));
                 let draw = PostProcessDraw::Temp(result.get_rect(), draw, result.view.clone() );
                 // draws.push(draw);
                 draws.push(draw);

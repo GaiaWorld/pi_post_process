@@ -469,7 +469,7 @@ pub fn sys(
         r = r + 1;
     }
     test.value_test = r;
-    // test.postprocess.color_balance = Some(ColorBalance { r: r, g: 255 - r, b: 255 });
+    test.postprocess.color_balance = Some(ColorBalance { r: r, g: 255 - r, b: 255 });
     // self.postprocess.color_filter = Some(ColorFilter { r: r, g: 0, b: 0 });
     // test.postprocess.vignette = Some(Vignette { r: r, g: 0, b: 0, begin: 0.5, end: 1.5, scale: 1.0 });
     // self.postprocess.hsb = Some(HSB { hue: 0, brightness: 0, saturate: (r as i16 - 100) as i8 });
@@ -479,20 +479,20 @@ pub fn sys(
     // test.postprocess.blur_bokeh = Some(BlurBokeh { radius: 0.5, iteration: 8, center_x: 0., center_y: 0., start: 0.0, fade: 0.0  });
 
     test.postprocess.src_preimultiplied = true;
-    // if test.postprocess.horizon_glitch.is_none() {
-    //     let mut hg = HorizonGlitch::default();
-    //     hg.probability = 0.8;
-    //     hg.max_count = 200;
-    //     hg.min_count = 50;
-    //     hg.max_size = 0.05;
-    //     hg.min_size = 0.01;
-    //     hg.strength = 0.2;
-    //     test.postprocess.horizon_glitch = Some(hg);
-    // }
+    if test.postprocess.horizon_glitch.is_none() {
+        let mut hg = HorizonGlitch::default();
+        hg.probability = 0.8;
+        hg.max_count = 200;
+        hg.min_count = 50;
+        hg.max_size = 0.05;
+        hg.min_size = 0.01;
+        hg.strength = 0.2;
+        test.postprocess.horizon_glitch = Some(hg);
+    }
 
-    test.postprocess.bloom_dual = Some(BloomDual { radius: 1, iteration: 1, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
+    test.postprocess.bloom_dual = Some(BloomDual { radius: 2, iteration: 2, intensity: 1.0f32, threshold: r as f32 / 255.0, threshold_knee: 0.5 });
 
-    // test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
+    test.postprocess.radial_wave = Some(RadialWave { aspect_ratio: true, start: r as f32 / 255.0, end: r as f32 / 255.0 + 0.5, center_x: 0., center_y: 0., cycle: 2, weight: 0.2  });
     
     // test.postprocess.filter_sobel = Some(FilterSobel{ size: 1, clip: r as f32 / 255.0, color: (255, 0, 0, 255), bg_color: (0, 0, 0, 125)  });
 

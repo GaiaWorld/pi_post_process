@@ -90,7 +90,7 @@ impl PostProcessDraw {
                             depth_stencil_attachment: None,
                         }
                     );
-                    log::warn!("Viewport: {:?}", (x as f32, y as f32, w as f32, h as f32));
+                    // log::warn!("Viewport: {:?}", (x as f32, y as f32, w as f32, h as f32, target.key()));
                     renderpass.set_viewport(x as f32, y as f32, w as f32, h as f32, 0., 1.);
                     renderpass.set_scissor_rect(x, y, w, h);
                     renderpass.set_pipeline(pipeline);

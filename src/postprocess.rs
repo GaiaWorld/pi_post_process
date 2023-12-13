@@ -165,8 +165,8 @@ impl PostProcess {
         delta_time: u64,
         device: &RenderDevice,
         queue: &RenderQueue,
-        mut src: PostprocessTexture,
-        dst_size: (u32, u32),
+        src: PostprocessTexture,
+        _dst_size: (u32, u32),
         safeatlas: &SafeAtlasAllocator,
         resources: &SingleImageEffectResource,
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
@@ -178,13 +178,23 @@ impl PostProcess {
         }
         self.check(delta_time, true, device, queue, resources);
 
-        let matrix: &[f32] = &IDENTITY_MATRIX;
+        // let matrix: &[f32] = &IDENTITY_MATRIX;
 
-        let mut drawlist: Vec<PostProcessDraw> = vec![];
+        let drawlist: Vec<PostProcessDraw> = vec![];
         
-        let mut src_premultiplied: bool = false; // self.src_preimultiplied;
+        let src_premultiplied: bool = self.src_preimultiplied;
         // if src.use_w() != dst_size.0 || src.use_h() != dst_size.1 {
-        //     let result = EffectCopy::get_target(None, &src, dst_size, safeatlas, target_type, target_format);
+        //     let mut result_use_once_innext = true;
+        //     if 0 < self.flags.len() {
+        //         let next = *self.flags.get(0).unwrap();
+        //         match next {
+        //             EPostprocessRenderType::HorizonGlitch => result_use_once_innext = false,
+        //             EPostprocessRenderType::BloomDual => result_use_once_innext = false,
+        //             _ => result_use_once_innext = true,
+        //         }
+        //     }
+
+        //     let result = EffectCopy::get_target(None, &src, dst_size, safeatlas, target_type, target_format, result_use_once_innext);
 
         //     let draw = EffectCopy::ready(
         //         self.renderer_copy.as_ref().unwrap(), resources, device, queue,
@@ -283,7 +293,7 @@ impl PostProcess {
                 let mut tempresult = TempResult { target: None, finaldraw: None };
                 let src_premultiplied = if count == 1 { self.src_preimultiplied } else { false };
                 let dst_premultiply = self.src_preimultiplied;
-                self._draw_single_simple(device, queue, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, &mut tempresult, src_premultiplied, dst_premultiply);
+                self._draw_single_simple(device, queue, matrix, extends, flag, safeatlas, source, ETarget::Final(target_size.0, target_size.1), &mut draws, resources, pipelines, color_state, depth_stencil, target_type, target_format, &mut tempresult, src_premultiplied, dst_premultiply, true);
 
                 if let Some(finaldraw) = tempresult.finaldraw {
                     Some(finaldraw)
@@ -309,7 +319,7 @@ impl PostProcess {
         pipelines: &Share<AssetMgr<RenderRes<RenderPipeline>>>,
         target_type: TargetType,
         target_format: wgpu::TextureFormat,
-        src_premultiplied: bool,
+        mut src_premultiplied: bool,
         mut drawlist: Vec<PostProcessDraw>,
     ) -> Result<(Vec<PostProcessDraw>, PostprocessTexture), EPostprocessError>  {
         let count = self.flags.len();
@@ -325,12 +335,24 @@ impl PostProcess {
 
                 let mut temp_result = TempResult { target: None, finaldraw: None };
 
+                let mut result_use_once_innext = true;
+                if i < count - 1 {
+                    let next = *self.flags.get(i+1).unwrap();
+                    match next {
+                        EPostprocessRenderType::HorizonGlitch => result_use_once_innext = false,
+                        EPostprocessRenderType::BloomDual => result_use_once_innext = false,
+                        _ => result_use_once_innext = true,
+                    }
+                }
+
+                if i > 0 { src_premultiplied = false; }
+
                 self._draw_single_simple(
                     device, queue,
                     &IDENTITY_MATRIX, SimpleRenderExtendsData::default(), flag, safeatlas,
                     &source, target,
                     &mut drawlist, resources, pipelines,
-                    create_default_target(target_format), None, target_type, target_format, &mut temp_result, src_premultiplied, false
+                    create_default_target(target_format), None, target_type, target_format, &mut temp_result, src_premultiplied, false, result_use_once_innext
                 );
                 source = temp_result.target.unwrap();
                 temp_result.target = None;
@@ -360,6 +382,7 @@ impl PostProcess {
         temp_result: &mut TempResult,
         mut src_premultiplied: bool,
         dst_premultiply: bool,
+        result_target_useonce: bool
     ) {
         let dst_size = target.size();
         let force_nearest_filter = source.size_eq_2(&dst_size);
@@ -368,7 +391,7 @@ impl PostProcess {
                 let param = self.renderer_coloreffect.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectColorEffect::ready(
                             param, resources, device, queue, 0, dst_size, &matrix, extends.alpha, extends.depth,
                             source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter, src_premultiplied, dst_premultiply
@@ -390,7 +413,7 @@ impl PostProcess {
                 let param = self.renderer_blur_direct.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectBlurDirect::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix, 1., 1., source, safeatlas, target_type, pipelines, color_state, depth_stencil, src_premultiplied, dst_premultiply
@@ -412,7 +435,7 @@ impl PostProcess {
                 let param = self.renderer_blur_radial.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectBlurRadial::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix, extends.alpha, extends.depth, source, safeatlas, target_type, pipelines,  color_state, depth_stencil, src_premultiplied, dst_premultiply
@@ -434,7 +457,7 @@ impl PostProcess {
                 let param = self.renderer_blur_bokeh.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectBlurBokeh::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix, extends.alpha, extends.depth, &source, safeatlas, target_type, pipelines, color_state, depth_stencil, src_premultiplied, dst_premultiply
@@ -456,7 +479,7 @@ impl PostProcess {
                 let param = self.renderer_radial_wave.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectRadialWave::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, src_premultiplied, dst_premultiply
@@ -478,7 +501,7 @@ impl PostProcess {
                 let param = self.renderer_filter_sobel.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectFilterSobel::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, src_premultiplied, dst_premultiply
@@ -500,7 +523,7 @@ impl PostProcess {
                 let param = self.renderer_copyintensity.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectCopy::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter, src_premultiplied, dst_premultiply
@@ -522,7 +545,7 @@ impl PostProcess {
                 let param = self.renderer_copy.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectCopy::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectCopy::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter, src_premultiplied, dst_premultiply
@@ -544,7 +567,7 @@ impl PostProcess {
                 let param = self.renderer_image_mask.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectImageMask::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectImageMask::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectImageMask::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter, src_premultiplied, dst_premultiply
@@ -566,7 +589,7 @@ impl PostProcess {
                 let param = self.renderer_clip_sdf.as_ref().unwrap();
                 match target {
                     ETarget::Temp(_, _) => {
-                        let result = EffectClipSdf::get_target(None, &source, dst_size, safeatlas, target_type, target_format, true); 
+                        let result = EffectClipSdf::get_target(None, &source, dst_size, safeatlas, target_type, target_format, result_target_useonce); 
                         let draw = EffectClipSdf::ready(
                             param, resources, device, queue,
                             0, dst_size, &matrix,  extends.alpha, extends.depth, source, safeatlas, target_type, pipelines, color_state, depth_stencil, force_nearest_filter, src_premultiplied, dst_premultiply
