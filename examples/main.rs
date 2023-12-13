@@ -192,7 +192,9 @@ impl Node for RenderNode {
                     }
                 );
             };
+            let mut finalcolorformat = wgpu::TextureFormat::Rgba8Unorm;
             let size = if let Some(tex) = &screen.texture() {
+                finalcolorformat = tex.texture.format();
                 tex.texture.size()
             } else {
                 return Box::pin(
@@ -226,10 +228,10 @@ impl Node for RenderNode {
                     width: receive_width,
                     height: receive_height,
                     view: ETextureViewUsage::Temp(view.clone(), 0),
-                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    format: finalcolorformat,
                 };
             
-                let final_targets = create_target(wgpu::TextureFormat::Rgba8Unorm, get_blend_state(EBlend::Combine), wgpu::ColorWrites::ALL);
+                let final_targets = create_target(finalcolorformat, get_blend_state(EBlend::Combine), wgpu::ColorWrites::ALL);
                 let final_depth_and_stencil = None;
 
                 let result = postprocess.resulttarget.clone();
@@ -255,7 +257,7 @@ impl Node for RenderNode {
                             final_targets,
                             final_depth_and_stencil,
                             postprocess.target_type.clone(),
-                            wgpu::TextureFormat::Rgba8Unorm
+                            finalcolorformat
                         ) {
                             let mut renderpass = commands.begin_render_pass(
                                 &wgpu::RenderPassDescriptor {
