@@ -83,11 +83,13 @@ impl PostProcessDraw {
                                     resolve_target: None,
                                     ops: wgpu::Operations {
                                         load: wgpu::LoadOp::Load,
-                                        store: true,
+                                        store: wgpu::StoreOp::Store,
                                     }
                                 })
                             ],
                             depth_stencil_attachment: None,
+                            timestamp_writes: None,
+                            occlusion_query_set: None,
                         }
                     );
                     // log::warn!("Viewport: {:?}", (x as f32, y as f32, w as f32, h as f32, target.key()));
@@ -278,10 +280,10 @@ pub trait TImageEffect {
             target
         } else if let Some(temp) = source.get_share_target() {
             templist.push(temp);
-            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), !onlyonce);
+            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), true);
             PostprocessTexture::from_share_target(Share::new(target), target_format)
         } else {
-            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), !onlyonce);
+            let target = safeatlas.allocate_not_share(dst_size.0, dst_size.1, target_type, templist.iter(), true);
             PostprocessTexture::from_share_target(Share::new(target), target_format)
         };
         target
