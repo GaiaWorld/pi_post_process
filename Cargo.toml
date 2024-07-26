@@ -19,7 +19,7 @@ wgpu                    = { version = "0.1", registry = "yn", package = "pi_wgpu
 crossbeam               = "0.8"
 pi_hash                 = "0.1"
 pi_enum_default_macro   = "0.1"
-pi_assets               = "0.13"
+pi_assets               = "0.14"
 pi_map                  = "0.2"
 pi_wy_rng               = "0.1"
 pi_render               = { version = "0.1", registry = "yn" }
