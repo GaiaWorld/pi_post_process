@@ -11,7 +11,7 @@ pub enum EMaskMode {
 }
 
 /// 区域蒙版
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ImageMask {
     pub image: PostprocessTexture,
     pub factor: f32,
