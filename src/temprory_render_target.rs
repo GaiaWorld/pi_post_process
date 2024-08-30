@@ -4,7 +4,7 @@ use guillotiere::Rectangle;
 use pi_render::{components::view::target_alloc::{ShareTargetView, SafeAtlasAllocator, TargetDescriptor, TextureDescriptor}, renderer::texture::ETextureViewUsage};
 use smallvec::SmallVec;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct PostprocessTexture {
     pub use_x: u32,
     pub use_y: u32,
