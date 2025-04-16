@@ -179,7 +179,7 @@ pub struct SingleImageEffectResource {
     map: XHashMap<String, Arc<ImageEffectResource>>,
     pub uniforms: Share<SegQueue<Buffer>>,
     pub(crate) device: RenderDevice,
-    pub(crate) instancebuffer: Arc<EVertexBufferRange>,
+    pub(crate) instancebuffer: Share<EVertexBufferRange>,
     pub(crate) instancebufferranges: Share<SegQueue<usize>>,
 }
 
@@ -192,14 +192,14 @@ impl SingleImageEffectResource {
         // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices)).unwrap();
         // let triangle = RenderVertices {
         //     slot: 0,
-        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer: EVerticesBufferUsage::EVBRange(Share::new(buffer)),
         //     buffer_range: None,
         //     size_per_value: 8,
         // };
         // let indices: [u16; 4] = [0, 1, 2, 0];
         // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
         // let triangle_indices = RenderIndices {
-        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer: EVerticesBufferUsage::EVBRange(Share::new(buffer)),
         //     buffer_range: None,
         //     format: wgpu::IndexFormat::Uint16,
         // };
@@ -209,14 +209,14 @@ impl SingleImageEffectResource {
         let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&vertices), None).unwrap();
         let quad = RenderVertices {
             slot: 0,
-            buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+            buffer: EVerticesBufferUsage::EVBRange(Share::new(buffer)),
             buffer_range: None,
             size_per_value: 8,
         };
         // let indices: [u16; 6] = [0, 1, 2, 3, 4, 5];
         // let buffer = vballocator.create_not_updatable_buffer(device, queue, bytemuck::cast_slice(&indices)).unwrap();
         // let quad_indices = RenderIndices {
-        //     buffer: EVerticesBufferUsage::EVBRange(Arc::new(buffer)),
+        //     buffer: EVerticesBufferUsage::EVBRange(Share::new(buffer)),
         //     buffer_range: None,
         //     format: wgpu::IndexFormat::Uint16,
         // };
@@ -241,7 +241,7 @@ impl SingleImageEffectResource {
             map: XHashMap::default(),
             uniforms: Share::new(SegQueue::new()),
             device: device.clone(),
-            instancebuffer: Arc::new(instancebuffer),
+            instancebuffer: Share::new(instancebuffer),
             instancebufferranges
         }
     }
