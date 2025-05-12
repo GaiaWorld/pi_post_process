@@ -96,32 +96,32 @@ float antialiase(float d)
             return is_ccw(pt, pt0, pt1);
         }
         float antialiase_round_rect(vec2 pt, vec2 extent, vec2 offset1, vec2 offset2, vec2 offset3, vec2 offset4) {
-            
+		
             float d_rect = sdfRect(pt, extent);
             float a_rect = antialiase(d_rect);
             vec2 center = vec2(-extent.x + offset1.x, -extent.y + offset1.y); 
+            float d = sdfEllipse(pt, center, abs(offset1));
+            float a = antialiase(d);
             if (is_left_top(pt, extent, center)) {
-                float d = sdfEllipse(pt, center, abs(offset1));
-                float a = antialiase(d);
                 return min(a_rect, a);
             }
             center = vec2(extent.x + offset2.x, -extent.y + offset2.y); 
+            d = sdfEllipse(pt, center, abs(offset2));
+            a = antialiase(d);
             if (is_top_right(pt, extent, center)) {
-                float d = sdfEllipse(pt, center, abs(offset2));
-                float a = antialiase(d);
                 return min(a_rect, a);
             }
             center = vec2(extent.x + offset3.x, extent.y + offset3.y); 
+            d = sdfEllipse(pt, center, abs(offset3));
+            a = antialiase(d);
             if (is_right_bottom(pt, extent, center)) {
-                float d = sdfEllipse(pt, center, abs(offset3));
-                float a = antialiase(d);
                 return min(a_rect, a);
             }
             
             center = vec2(-extent.x + offset4.x, extent.y + offset4.y); 
+            d = sdfEllipse(pt, center, abs(offset4));
+            a = antialiase(d);
             if (is_bottom_left(pt, extent, center)) {
-                float d = sdfEllipse(pt, center, abs(offset4));
-                float a = antialiase(d);
                 return min(a_rect, a);
             }
             return a_rect;
