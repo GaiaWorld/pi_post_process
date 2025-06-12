@@ -90,7 +90,7 @@ pub fn load_shader(
             source: wgpu::ShaderSource::Glsl {
                 shader: std::borrow::Cow::Borrowed(vs_text),
                 stage: naga::ShaderStage::Vertex,
-                defines: naga::FastHashMap::default(),
+                defines: &[],
             }
         }
     );
@@ -101,7 +101,7 @@ pub fn load_shader(
             source: wgpu::ShaderSource::Glsl {
                 shader: std::borrow::Cow::Borrowed(fs_text),
                 stage: naga::ShaderStage::Fragment,
-                defines: naga::FastHashMap::default(),
+                defines: &[],
             }
         }
     );
