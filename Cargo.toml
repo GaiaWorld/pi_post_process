@@ -1,6 +1,6 @@
 [package]
 name = "pi_postprocess"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["bp0002 <bp950722@outlook.com>"]
 edition = "2021"
 
@@ -29,7 +29,7 @@ ahash = "0.8"
 pi_winit                = { version = "0.27", registry = "yn", package = "winit" }
 
 pi_null                 = "0.1"
-pi_world                = { version = "0.1" }
+pi_world                = { version = "0.2" }
 pi_scene_math           = { version = "0.0.*", registry = "yn" }
 pi_futures              = "0.1"
 pi_key_alloter          = "0.5"
