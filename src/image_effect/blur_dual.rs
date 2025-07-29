@@ -133,10 +133,11 @@ impl TImageEffect for EffectBlurDual {
                 layout: Some(&pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &shader.vs_module,
-                    entry_point: "main",
+                    entry_point: Some("main"),
                     buffers: &[
                         wgpu::VertexBufferLayout { array_stride: 8, step_mode: wgpu::VertexStepMode::Vertex, attributes: &base_attributes  }
                     ],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -150,11 +151,13 @@ impl TImageEffect for EffectBlurDual {
                 fragment: Some(
                     wgpu::FragmentState {
                         module: &shader.fs_module,
-                        entry_point: "main",
+                        entry_point: Some("main"),
                         targets: &[key_pipeline.color_state()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
                     }
                 ),
                 multiview: None,
+                cache: None
             }
         )
     }

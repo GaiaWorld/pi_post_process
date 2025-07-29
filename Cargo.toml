@@ -1,6 +1,6 @@
 [package]
 name = "pi_postprocess"
-version = "0.2.1"
+version = "0.3.1"
 authors = ["bp0002 <bp950722@outlook.com>"]
 edition = "2021"
 
@@ -13,8 +13,8 @@ derive_deref            = "1.1"
 log                     = "0.4"
 smallvec                = { version = "1.8", features = ["serde"] }
 bytemuck                = { version = "1.4", features = ["derive"] }
-naga                    = { version = "0.19" }
-wgpu                    = { version = "0.2", registry = "yn", package = "pi_wgpu" }
+naga                    = { version = "25.0.*" }
+wgpu                    = { version = "0.3", registry = "yn", package = "pi_wgpu" }
 
 crossbeam               = "0.8"
 pi_hash                 = "0.1"
@@ -22,21 +22,23 @@ pi_enum_default_macro   = "0.1"
 pi_assets               = "0.15"
 pi_map                  = "0.2"
 pi_wy_rng               = "0.1"
-pi_render               = { version = "0.2", registry = "yn" }
+pi_render               = { version = "0.3", registry = "yn" }
 pi_share                = "0.5"
 pi_atom                 = { version = "0.6", features = ["serde"] }
-pi_bevy_render_plugin   = { version = "0.2", registry = "yn"}
-pi_bevy_winit_window    = { version = "0.2", registry = "yn"}
-pi_bevy_ecs_extend      = { version = "0.2", registry = "yn"}
-pi_bevy_asset           = { version = "0.2", registry = "yn"}
 ahash = "0.8"
 pi_winit                = { version = "0.27", registry = "yn", package = "winit" }
+
+pi_null                 = "0.1"
+pi_world                = { version = "0.2" }
+pi_scene_math           = { version = "0.0.*", registry = "yn" }
+pi_futures              = "0.1"
+pi_key_alloter          = "0.5"
 
 [dev-dependencies]
 # winit                   = { version = "0.27", registry = "yn" }
 pi_winit                = { version = "0.27", registry = "yn", package = "winit" }
-wgpu                    = { version = "0.2", registry = "yn", package = "pi_wgpu"}
-wgpu1                   = { version = "0.19", features = ["glsl"],  package = "wgpu" }
+wgpu                    = { version = "0.3", registry = "yn", package = "pi_wgpu"}
+wgpu1                   = { version = "25.0.*", features = ["glsl"],  package = "wgpu" }
 image                   = "0.25"
 env_logger              = "0.9"
 float-ord               = "0.3"
@@ -44,14 +46,18 @@ async-trait             = "0.1"
 pi_futures              = "0.1"
 pi_time                 = "0.5"
 pi_null                 = "0.1"
-bevy                    = { version = "0.11", default-features = false, features = ["bevy_winit"] }
+# pi_bevy_render_plugin   = { version = "0.2", registry = "yn"}
+# pi_bevy_winit_window    = { version = "0.2", registry = "yn"}
+# pi_bevy_ecs_extend      = { version = "0.2", registry = "yn"}
+# pi_bevy_asset           = { version = "0.2", registry = "yn"}
+# bevy                    = { version = "0.11", default-features = false, features = ["bevy_winit"] }
 
 # [patch."https://github.com/GaiaWorld/pi_sdf"]
 # pi_sdf = { path = "../pi_sdf" }
 
 [patch.yn]
-# pi_hal = { path = "../pi_hal" }
-# pi_wgpu = {path = "../pi_wgpu"}
+pi_hal = { path = "../pi_hal" }
+pi_wgpu = {path = "../pi_wgpu"}
 # pi_egl = {path = "../pi_egl"}
 # winit = { path = "../winit"}
 # pi_render = { path = "../winit" }
@@ -59,10 +65,10 @@ bevy                    = { version = "0.11", default-features = false, features
 # render_utils = { path = "../pi_render_new_graphic/crates/render_utils" }
 # render_derive = { path = "../pi_render_new_graphic/crates/render_derive" }
 # render_compile = { path = "../pi_render_new_graphic/crates/render_compile" }
-# pi_render = { path = "../pi_render" }
-# render_utils = { path = "../pi_render/crates/render_utils" }
-# render_derive = { path = "../pi_render/crates/render_derive" }
-# render_compile = { path = "../pi_render/crates/render_compile" }
+pi_render = { path = "../pi_render" }
+render_utils = { path = "../pi_render/crates/render_utils" }
+render_derive = { path = "../pi_render/crates/render_derive" }
+render_compile = { path = "../pi_render/crates/render_compile" }
 
 # pi_bevy
 # pi_bevy_render_plugin = { path="../pi_bevy_new_graphic/crates/render" }
