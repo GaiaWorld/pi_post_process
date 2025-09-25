@@ -1,6 +1,6 @@
 [package]
 name = "pi_postprocess"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["bp0002 <bp950722@outlook.com>"]
 edition = "2021"
 
